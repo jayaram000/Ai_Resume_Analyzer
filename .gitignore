@@ -1,0 +1,106 @@
+# ==========================================
+# Environment & Secrets
+# ==========================================
+.env
+.env.*
+!.env.example
+*.env
+
+# ==========================================
+# Python & Django
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Django local database and media
+*.sqlite3
+db.sqlite3
+/resume_undo/db.sqlite3
+/resume_undo/media/
+media/
+staticfiles/
+
+# Testing & Coverage
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+htmlcov/
+
+# Scratch & test outputs
+test_out.txt
+*.pdf
+!test_classic.pdf
+
+# ==========================================
+# Flutter & Dart
+# ==========================================
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/frontend/build/
+/frontend/.dart_tool/
+/frontend/.flutter-plugins-dependencies
+
+# Symbolication & Obfuscation
+app.*.symbols
+app.*.map.json
+
+# Flutter OS build folders
+/frontend/android/app/debug
+/frontend/android/app/profile
+/frontend/android/app/release
+
+# ==========================================
+# IDEs & System Files
+# ==========================================
+.vscode/
+!.vscode/settings.json.example
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
