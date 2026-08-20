@@ -75,7 +75,7 @@ class SkillGapInputSerializer(serializers.Serializer):
     resume_id = serializers.IntegerField(required=False, allow_null=True)
 
 class CareerRoadmapInputSerializer(serializers.Serializer):
-    current_role = serializers.CharField(max_length=255)
+    current_role = serializers.CharField(max_length=255, required=False, default="Software Developer", allow_blank=True)
     target_role = serializers.CharField(max_length=255)
 
 class InterviewPrepInputSerializer(serializers.Serializer):

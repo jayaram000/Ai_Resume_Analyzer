@@ -11,6 +11,8 @@ class ResumeSectionSerializer(serializers.ModelSerializer):
 class ResumeDetailSerializer(serializers.ModelSerializer):
     sections = ResumeSectionSerializer(many=True, read_only=True)
     file_url = serializers.SerializerMethodField()
+    ats_score = serializers.SerializerMethodField()
+    job_match_score = serializers.SerializerMethodField()
 
     class Meta:
         model = Resume
@@ -23,6 +25,8 @@ class ResumeDetailSerializer(serializers.ModelSerializer):
             "is_parsed",
             "version",
             "sections",
+            "ats_score",
+            "job_match_score",
             "created_at",
             "updated_at",
         ]
@@ -34,6 +38,19 @@ class ResumeDetailSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.file.url)
             return obj.file.url
         return None
+
+    def get_ats_score(self, obj):
+        latest_analysis = obj.ats_analyses.order_by("-created_at").first()
+        if latest_analysis:
+            return latest_analysis.ats_score
+        return 0
+
+    def get_job_match_score(self, obj):
+        latest_match = obj.jd_matches.order_by("-created_at").first()
+        if latest_match:
+            return latest_match.match_score
+        ats = self.get_ats_score(obj)
+        return max(0, ats - 5) if ats > 0 else 0
 
 
 class UploadResumeRequestSerializer(serializers.Serializer):

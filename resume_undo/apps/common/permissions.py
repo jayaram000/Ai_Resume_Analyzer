@@ -1,5 +1,6 @@
 from rest_framework.permissions import BasePermission
 from django.utils import timezone
+from django.conf import settings
 
 class IsPremiumUser(BasePermission):
     message = "Premium subscription required to access this resource."
@@ -8,8 +9,8 @@ class IsPremiumUser(BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
         
-        # Admin users bypass premium locks
-        if getattr(request.user, 'role', 'USER') == 'ADMIN' or request.user.is_staff:
+        # Development / Debug mode or Admins/Staff bypass premium restriction
+        if getattr(settings, "DEBUG", False) or getattr(request.user, 'role', 'USER') == 'ADMIN' or request.user.is_staff:
             return True
 
         # Avoid circular imports by importing inside the method
