@@ -446,6 +446,20 @@ class CareerRoadmapDetailView(APIView):
         roadmap.delete()
         return Response({"success": True, "message": "Career roadmap deleted successfully."})
 
+class DownloadCareerRoadmapPDFView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsPremiumUser]
+    
+    def get(self, request, pk):
+        from analysis.models import CareerRoadmap
+        from analysis.pdf_generator import generate_career_roadmap_pdf
+        roadmap = get_object_or_404(CareerRoadmap, pk=pk, user=request.user)
+        pdf_buffer = generate_career_roadmap_pdf(roadmap)
+        
+        response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+        filename = f"career_roadmap_{roadmap.target_role.replace(' ', '_')}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
 class InterviewPreparationView(BaseAnalysisView):
     permission_classes = [permissions.IsAuthenticated, IsPremiumUser]
 

@@ -81,9 +81,42 @@ class SkillGapAnalysisSerializer(serializers.ModelSerializer):
         return self._get_lp(obj).get("resume_transition_tips", [])
 
 class CareerRoadmapSerializer(serializers.ModelSerializer):
+    projects = serializers.SerializerMethodField()
+    youtube_videos = serializers.SerializerMethodField()
+    youtube_channels = serializers.SerializerMethodField()
+    documentation_sites = serializers.SerializerMethodField()
+    popular_courses = serializers.SerializerMethodField()
+    free_courses = serializers.SerializerMethodField()
+
     class Meta:
         model = CareerRoadmap
         fields = "__all__"
+
+    def _get_milestone_dict(self, obj):
+        if isinstance(obj.milestones, dict):
+            return obj.milestones
+        if isinstance(obj.milestones, list) and len(obj.milestones) > 0 and isinstance(obj.milestones[0], dict):
+            return obj.milestones[0]
+        return {}
+
+    def get_projects(self, obj):
+        return self._get_milestone_dict(obj).get("projects", [])
+
+    def get_youtube_videos(self, obj):
+        d = self._get_milestone_dict(obj)
+        return d.get("youtube_videos", d.get("video_tutorials", []))
+
+    def get_youtube_channels(self, obj):
+        return self._get_milestone_dict(obj).get("youtube_channels", [])
+
+    def get_documentation_sites(self, obj):
+        return self._get_milestone_dict(obj).get("documentation_sites", [])
+
+    def get_popular_courses(self, obj):
+        return self._get_milestone_dict(obj).get("popular_courses", [])
+
+    def get_free_courses(self, obj):
+        return self._get_milestone_dict(obj).get("free_courses", [])
 
 class InterviewPreparationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -118,7 +151,7 @@ class SkillGapInputSerializer(serializers.Serializer):
     resume_id = serializers.CharField(max_length=255, required=False, allow_null=True, allow_blank=True)
 
 class CareerRoadmapInputSerializer(serializers.Serializer):
-    current_role = serializers.CharField(max_length=255, required=False, default="Software Developer", allow_blank=True)
+    current_role = serializers.CharField(max_length=255, required=False, default="", allow_blank=True)
     target_role = serializers.CharField(max_length=255)
 
 class InterviewPrepInputSerializer(serializers.Serializer):

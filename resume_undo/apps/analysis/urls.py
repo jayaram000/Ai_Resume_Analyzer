@@ -27,6 +27,7 @@ urlpatterns = [
     path('skill-gap/<uuid:pk>/pdf/', views.DownloadSkillGapPDFView.as_view(), name='skill-gap-pdf'),
     path("roadmap/", CareerRoadmapView.as_view(), name="analysis-roadmap"),
     path("roadmap/<uuid:pk>/", views.CareerRoadmapDetailView.as_view(), name="analysis-roadmap-detail"),
+    path("roadmap/<uuid:pk>/pdf/", views.DownloadCareerRoadmapPDFView.as_view(), name="roadmap-pdf"),
     path("interview/<uuid:resume_id>/", InterviewPreparationView.as_view(), name="analysis-interview"),
     path("project/<uuid:resume_id>/", ProjectRecommendationView.as_view(), name="analysis-project"),
     path("cover-letter/<uuid:resume_id>/", CoverLetterView.as_view(), name="analysis-cover-letter"),
