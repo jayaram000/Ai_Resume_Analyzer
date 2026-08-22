@@ -1052,19 +1052,20 @@ class CareerScoreService:
             actions.append("Excellent career readiness! Keep updating your skills and certifications.")
 class AdvancedSkillGapService:
     @staticmethod
-    def analyze_skill_gap(user, target_role: str, resume_id: int = None):
+    def analyze_skill_gap(user, target_role: str, resume_id: str = None):
         """
-        Calculates missing skills and creates a career roadmap by:
-        1. Checking the provided resume (or latest)
-        2. Scraping job descriptions for the role
-        3. Identifying missing skills
-        4. Leveraging AI to build a customized career roadmap
+        Performs a deep AI-driven gap analysis comparing the candidate's actual resume
+        against the target position & seniority level.
+        Generates readiness score, matched skills, categorized gap areas,
+        phased transition roadmap, portfolio projects, certifications, and resume positioning tips.
         """
         from resumes.models import Resume
         from jobs.services import fetch_jobs_from_jsearch
         from analysis.models import SkillGapAnalysis
+        from common.gemini import call_gemini_api
         import re
         from collections import Counter
+        import json
 
         if resume_id:
             latest_resume = Resume.objects.filter(user=user, id=resume_id).first()
@@ -1072,18 +1073,24 @@ class AdvancedSkillGapService:
             latest_resume = Resume.objects.filter(user=user).order_by("-created_at").first()
             
         user_skills = []
-        if latest_resume and hasattr(latest_resume, "parsed_content") and latest_resume.parsed_content:
-            user_skills = [s.lower() for s in latest_resume.parsed_content.extracted_skills]
+        resume_raw_text = ""
+        resume_title = "Candidate Resume"
+        if latest_resume:
+            resume_title = latest_resume.title or "Resume"
+            resume_raw_text = latest_resume.raw_text or ""
+            if hasattr(latest_resume, "parsed_content") and latest_resume.parsed_content:
+                user_skills = [s for s in latest_resume.parsed_content.extracted_skills]
 
+        # Extract market keywords
         jobs = fetch_jobs_from_jsearch(target_role, page=1)
 
         tech_dictionary = {
             "python", "django", "flask", "fastapi", "javascript", "react", "angular", "vue",
-            "node", "express", "typescript", "flutter", "dart", "java", "spring", "c++", "c#",
-            "net", "ruby", "rails", "go", "golang", "php", "laravel", "sql", "postgres", "mysql",
-            "mongodb", "redis", "docker", "kubernetes", "aws", "gcp", "azure", "git", "github",
-            "ci/cd", "html", "css", "tailwind", "sass", "graphql", "rest api", "testing", "pytest",
-            "jest", "selenium", "agile", "scrum", "jira", "linux", "bash"
+            "node", "express", "typescript", "flutter", "dart", "java", "spring", "spring boot", "c++", "c#",
+            ".net", "ruby", "rails", "go", "golang", "php", "laravel", "sql", "postgres", "postgresql", "mysql",
+            "mongodb", "redis", "kafka", "rabbitmq", "docker", "kubernetes", "aws", "gcp", "azure", "git", "github",
+            "ci/cd", "html", "css", "tailwind", "graphql", "rest api", "testing", "junit", "pytest",
+            "system design", "microservices", "distributed systems", "agile", "scrum", "jira", "linux"
         }
 
         tech_counts = Counter()
@@ -1093,87 +1100,155 @@ class AdvancedSkillGapService:
                 if re.search(r'\b' + re.escape(tech) + r'\b', desc_lower):
                     tech_counts[tech] += 1
 
-        if not tech_counts:
-            defaults = ["git", "sql", "docker"]
-            if "python" in target_role.lower() or "backend" in target_role.lower():
-                defaults += ["python", "django", "postgres", "aws"]
-            elif "flutter" in target_role.lower() or "mobile" in target_role.lower():
-                defaults += ["flutter", "dart", "rest api"]
-            else:
-                defaults += ["javascript", "react", "html", "css"]
-            for d in defaults:
-                tech_counts[d] = 1
-
-        total_jobs = len(jobs) if jobs else 1
-        priority_skills = []
-        missing_skills = []
-
-        sorted_market_techs = [tech for tech, count in tech_counts.most_common()]
-
-        for tech in sorted_market_techs:
-            frequency_pct = (tech_counts[tech] / total_jobs) * 100
-            if frequency_pct >= 50:
-                priority = "High"
-            elif frequency_pct >= 20:
-                priority = "Medium"
-            else:
-                priority = "Low"
-
-            if tech not in user_skills:
-                if frequency_pct >= 20:
-                    missing_skills.append(tech)
-                    priority_skills.append({
-                        "skill": tech,
-                        "priority": priority,
-                        "market_demand_pct": int(frequency_pct)
-                    })
-
-        # Ask Gemini to generate a detailed roadmap based on the scraped missing skills
-        from common.gemini import call_gemini_api
-        import json
-        
+        market_techs = [tech for tech, count in tech_counts.most_common(20)]
         experience = getattr(user, '_temp_experience', 'Mid-Level')
-        
+
+        # Construct comprehensive Gemini prompt
+        user_skills_str = ", ".join(user_skills[:40]) if user_skills else "General software development skills"
+        resume_snippet = resume_raw_text[:2000] if resume_raw_text else f"Skills: {user_skills_str}"
+
         prompt = f"""
-Create a detailed phased career roadmap for a user transitioning to "{target_role}" at the "{experience}" experience level.
-The user is currently missing the following key skills (which were scraped from live job postings): {missing_skills}
+You are a Principal Technical Career Strategist and Hiring Architect.
+Perform an in-depth Career Gap & Upskilling Intelligence analysis for a candidate targeting the position "{target_role}" at the "{experience}" seniority level.
 
-Identify:
-1. A detailed phased career roadmap containing specific milestones and actionable guidance based on the user's experience level.
+--- CANDIDATE RESUME PROFILE ---
+Title: {resume_title}
+Extracted Skills: {user_skills_str}
+Resume Context:
+{resume_snippet}
 
-Your response MUST be a JSON object matching this schema:
+--- TARGET ROLE ---
+Position: {target_role}
+Level: {experience}
+Top Market Tech Stack: {", ".join(market_techs)}
+
+--- REQUIRED ANALYSIS ---
+Compare the candidate's exact background against the requirements of "{target_role} ({experience} level)".
+Provide a comprehensive, highly detailed response in JSON format.
+
+Your output MUST be valid JSON with this exact schema:
 {{
+  "match_score": 68,
+  "readiness_level": "Solid Foundation - Strategic Upskilling Needed",
+  "readiness_summary": "Detailed 2-3 sentence executive evaluation comparing the candidate's existing background (e.g. Flutter/Python) with what is required for a {target_role} at the {experience} level.",
+  "matched_skills": ["List", "of", "skills", "already", "in", "resume", "that", "apply", "directly"],
+  "missing_skills": ["List", "of", "missing", "technologies", "and", "tools"],
+  "categorized_gaps": {{
+    "Core Language & Frameworks": ["Spring Boot 3", "Java 21/17", "Hibernate/JPA"],
+    "Architecture & System Design": ["Microservices Architecture", "Event-Driven Architecture (Kafka)", "Domain-Driven Design (DDD)", "Distributed Caching"],
+    "Cloud & Infrastructure": ["Docker & Containerization", "Kubernetes (K8s)", "AWS (ECS, RDS, S3)", "CI/CD Pipelines"],
+    "Databases & Storage": ["PostgreSQL Performance Tuning", "Redis Caching", "Database Sharding"],
+    "Testing & Quality": ["JUnit 5 & Mockito", "Integration Testing", "Load Testing (JMeter)"]
+  }},
   "roadmap": [
-     {{"phase": "Phase 1 (Months 1-2): Core Foundations", "milestones": ["Learn X", "Build Y"], "guidance": "Focus on..."}}
+    {{
+      "phase": "Phase 1 (Months 1-2): Core Enterprise Ecosystem & Frameworks",
+      "guidance": "Focus on deep language internals, concurrency, memory model, and enterprise framework fundamentals.",
+      "milestones": [
+        "Master Java 17/21 Virtual Threads, Records, and Streams API",
+        "Build full-stack microservices with Spring Boot 3 & Spring Security",
+        "Implement relational persistence with JPA/Hibernate & PostgreSQL"
+      ]
+    }},
+    {{
+      "phase": "Phase 2 (Months 3-4): Distributed Architecture, Messaging & Cloud",
+      "guidance": "Transition from monolithic mindset to scalable distributed microservices.",
+      "milestones": [
+        "Event-driven architecture with Apache Kafka for asynchronous communication",
+        "Containerize microservices with Docker and deploy to Kubernetes clusters",
+        "Implement API Gateway, Circuit Breakers (Resilience4j), and centralized logging"
+      ]
+    }},
+    {{
+      "phase": "Phase 3 (Months 5-6): System Design, High-Load Optimization & Leadership",
+      "guidance": "Develop architecture-level thinking for high throughput, fault tolerance, and team mentoring.",
+      "milestones": [
+        "Design systems handling 100k+ RPS with Redis caching and read replicas",
+        "Lead technical design reviews (RFCs) and security compliance audits",
+        "System design interview mastery and architectural trade-off analysis"
+      ]
+    }}
+  ],
+  "recommended_projects": [
+    {{
+      "title": "High-Throughput Distributed Payment & Order Processing Engine",
+      "description": "An event-driven microservices platform utilizing Spring Boot 3, Kafka, Redis, PostgreSQL, and Docker with idempotent transaction guarantees.",
+      "tech_stack": ["Java 21", "Spring Boot", "Kafka", "PostgreSQL", "Redis", "Docker"]
+    }},
+    {{
+      "title": "Multi-Tenant Enterprise SaaS Gateway with Kubernetes",
+      "description": "A secure API gateway managing routing, rate limiting, and JWT authentication across containerized microservices deployed on AWS EKS.",
+      "tech_stack": ["Kubernetes", "AWS EKS", "Spring Cloud Gateway", "OAuth2/OIDC", "Prometheus"]
+    }}
+  ],
+  "recommended_certifications": [
+    "Oracle Certified Professional: Java SE 17 Developer",
+    "AWS Certified Solutions Architect - Associate / Professional",
+    "Certified Kubernetes Application Developer (CKAD)"
+  ],
+  "resume_transition_tips": [
+    "Reframe past backend and architectural achievements with strong metrics (e.g. throughput, latency reductions, scalability).",
+    "Highlight clean architecture, design patterns, and cross-functional leadership in your experience bullets.",
+    "Add a dedicated 'System Architecture & Cloud' section to showcase your modern backend stack."
   ]
 }}
 """
-        roadmap = []
         try:
-            ai_result = call_gemini_api(prompt, response_mime_type="application/json", max_retries=1)
-            roadmap = ai_result.get("roadmap", [])
+            ai_data = call_gemini_api(prompt, response_mime_type="application/json", max_retries=2)
+            if not isinstance(ai_data, dict):
+                ai_data = {}
         except Exception as e:
-            logger.error(f"Skill gap AI roadmap failed: {str(e)}")
-            # Fallback to basic if AI fails
-            roadmap = [{"phase": "Basic Phase", "milestones": missing_skills, "guidance": "Learn these skills"}]
+            logger.error(f"Skill gap deep AI analysis failed: {str(e)}")
+            ai_data = {}
 
+        match_score = ai_data.get("match_score", 65)
+        readiness_level = ai_data.get("readiness_level", f"{experience} Transition Readiness")
+        readiness_summary = ai_data.get("readiness_summary") or f"Comprehensive evaluation comparing your resume against {target_role} requirements at the {experience} level."
+        matched_skills = ai_data.get("matched_skills") or [s for s in user_skills if s.lower() in tech_dictionary][:8]
+        missing_skills_list = ai_data.get("missing_skills") or [t for t in market_techs if t.lower() not in [u.lower() for u in user_skills]] or ["Spring Boot", "Java 21", "Microservices", "Docker", "Kubernetes", "Kafka", "AWS", "System Design"]
+        categorized_gaps = ai_data.get("categorized_gaps") or {}
+        roadmap = ai_data.get("roadmap", [])
+        recommended_projects = ai_data.get("recommended_projects", [])
+        recommended_certifications = ai_data.get("recommended_certifications", [])
+        resume_transition_tips = ai_data.get("resume_transition_tips", [])
+
+        # Persist analysis in database
         gap, created = SkillGapAnalysis.objects.update_or_create(
             user=user,
             target_role=target_role,
             defaults={
-                "missing_skills": missing_skills,
-                "recommended_skills": missing_skills[:5],
-                "learning_priority": [],
+                "missing_skills": missing_skills_list,
+                "recommended_skills": missing_skills_list[:6],
+                "learning_priority": [
+                    {
+                        "match_score": match_score,
+                        "readiness_level": readiness_level,
+                        "readiness_summary": readiness_summary,
+                        "matched_skills": matched_skills,
+                        "categorized_gaps": categorized_gaps,
+                        "recommended_projects": recommended_projects,
+                        "recommended_certifications": recommended_certifications,
+                        "resume_transition_tips": resume_transition_tips,
+                    }
+                ],
                 "roadmap": roadmap
             }
         )
 
         return {
-            "missing_skills": missing_skills,
-            "priority_skills": priority_skills,
-            "recommended_learning_order": missing_skills,
-            "learning_priority": [],
-            "roadmap": roadmap
+            "id": str(gap.id),
+            "target_role": target_role,
+            "match_score": match_score,
+            "readiness_score": match_score,
+            "readiness_level": readiness_level,
+            "readiness_summary": readiness_summary,
+            "matched_skills": matched_skills,
+            "missing_skills": missing_skills_list,
+            "categorized_gaps": categorized_gaps,
+            "roadmap": roadmap,
+            "recommended_projects": recommended_projects,
+            "recommended_certifications": recommended_certifications,
+            "resume_transition_tips": resume_transition_tips,
         }
 
 

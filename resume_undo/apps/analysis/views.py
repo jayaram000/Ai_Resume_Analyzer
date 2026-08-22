@@ -341,12 +341,18 @@ class AutoTailorResumeView(BaseAnalysisView):
 class SkillGapAnalysisView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsPremiumUser]
 
+    def get(self, request):
+        from analysis.models import SkillGapAnalysis
+        gaps = SkillGapAnalysis.objects.filter(user=request.user).order_by("-created_at")
+        serializer = SkillGapAnalysisSerializer(gaps, many=True)
+        return Response({"success": True, "data": serializer.data})
+
     @extend_schema(request=SkillGapInputSerializer, responses=SkillGapAnalysisSerializer)
     def post(self, request):
         serializer = SkillGapInputSerializer(data=request.data)
         if serializer.is_valid():
             request.user._temp_experience = serializer.validated_data.get("experience", "Mid-Level")
-            AdvancedSkillGapService.analyze_skill_gap(
+            result = AdvancedSkillGapService.analyze_skill_gap(
                 request.user, 
                 serializer.validated_data["target_role"],
                 serializer.validated_data.get("resume_id")
@@ -362,10 +368,26 @@ class SkillGapAnalysisView(APIView):
             if not latest_resume or not hasattr(latest_resume, "parsed_content") or not latest_resume.parsed_content.extracted_skills:
                 is_guiding_mode = True
                 
-            data = SkillGapAnalysisSerializer(analysis).data
+            data = SkillGapAnalysisSerializer(analysis).data if analysis else {}
             data['is_guiding_mode'] = is_guiding_mode
+            if isinstance(result, dict):
+                data.update(result)
             return Response({"success": True, "data": data})
         return Response(serializer.errors, status=400)
+
+class SkillGapDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsPremiumUser]
+
+    def get(self, request, pk):
+        from analysis.models import SkillGapAnalysis
+        analysis = get_object_or_404(SkillGapAnalysis, pk=pk, user=request.user)
+        return Response({"success": True, "data": SkillGapAnalysisSerializer(analysis).data})
+
+    def delete(self, request, pk):
+        from analysis.models import SkillGapAnalysis
+        analysis = get_object_or_404(SkillGapAnalysis, pk=pk, user=request.user)
+        analysis.delete()
+        return Response({"success": True, "message": "Skill gap analysis deleted successfully."})
 
 from django.http import HttpResponse
 from analysis.pdf_generator import generate_skill_gap_pdf
@@ -392,6 +414,12 @@ class DownloadSkillGapPDFView(APIView):
 class CareerRoadmapView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsPremiumUser]
 
+    def get(self, request):
+        from analysis.models import CareerRoadmap
+        roadmaps = CareerRoadmap.objects.filter(user=request.user).order_by("-created_at")
+        serializer = CareerRoadmapSerializer(roadmaps, many=True)
+        return Response({"success": True, "data": serializer.data})
+
     @extend_schema(request=CareerRoadmapInputSerializer, responses=CareerRoadmapSerializer)
     def post(self, request):
         serializer = CareerRoadmapInputSerializer(data=request.data)
@@ -403,6 +431,20 @@ class CareerRoadmapView(APIView):
             )
             return Response({"success": True, "data": CareerRoadmapSerializer(analysis).data})
         return Response(serializer.errors, status=400)
+
+class CareerRoadmapDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsPremiumUser]
+
+    def get(self, request, pk):
+        from analysis.models import CareerRoadmap
+        roadmap = get_object_or_404(CareerRoadmap, pk=pk, user=request.user)
+        return Response({"success": True, "data": CareerRoadmapSerializer(roadmap).data})
+
+    def delete(self, request, pk):
+        from analysis.models import CareerRoadmap
+        roadmap = get_object_or_404(CareerRoadmap, pk=pk, user=request.user)
+        roadmap.delete()
+        return Response({"success": True, "message": "Career roadmap deleted successfully."})
 
 class InterviewPreparationView(BaseAnalysisView):
     permission_classes = [permissions.IsAuthenticated, IsPremiumUser]

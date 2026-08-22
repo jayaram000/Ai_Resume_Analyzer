@@ -33,9 +33,52 @@ class JDMatchAnalysisSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class SkillGapAnalysisSerializer(serializers.ModelSerializer):
+    match_score = serializers.SerializerMethodField()
+    readiness_score = serializers.SerializerMethodField()
+    readiness_level = serializers.SerializerMethodField()
+    readiness_summary = serializers.SerializerMethodField()
+    matched_skills = serializers.SerializerMethodField()
+    categorized_gaps = serializers.SerializerMethodField()
+    recommended_projects = serializers.SerializerMethodField()
+    recommended_certifications = serializers.SerializerMethodField()
+    resume_transition_tips = serializers.SerializerMethodField()
+
     class Meta:
         model = SkillGapAnalysis
         fields = "__all__"
+
+    def _get_lp(self, obj):
+        if obj.learning_priority and isinstance(obj.learning_priority, list) and len(obj.learning_priority) > 0:
+            if isinstance(obj.learning_priority[0], dict):
+                return obj.learning_priority[0]
+        return {}
+
+    def get_match_score(self, obj):
+        return self._get_lp(obj).get("match_score", 65)
+
+    def get_readiness_score(self, obj):
+        return self._get_lp(obj).get("match_score", 65)
+
+    def get_readiness_level(self, obj):
+        return self._get_lp(obj).get("readiness_level", "Role Transition Analysis")
+
+    def get_readiness_summary(self, obj):
+        return self._get_lp(obj).get("readiness_summary", "")
+
+    def get_matched_skills(self, obj):
+        return self._get_lp(obj).get("matched_skills", [])
+
+    def get_categorized_gaps(self, obj):
+        return self._get_lp(obj).get("categorized_gaps", {})
+
+    def get_recommended_projects(self, obj):
+        return self._get_lp(obj).get("recommended_projects", [])
+
+    def get_recommended_certifications(self, obj):
+        return self._get_lp(obj).get("recommended_certifications", [])
+
+    def get_resume_transition_tips(self, obj):
+        return self._get_lp(obj).get("resume_transition_tips", [])
 
 class CareerRoadmapSerializer(serializers.ModelSerializer):
     class Meta:
@@ -71,8 +114,8 @@ class JDMatchInputSerializer(serializers.Serializer):
 
 class SkillGapInputSerializer(serializers.Serializer):
     target_role = serializers.CharField(max_length=255)
-    experience = serializers.CharField(max_length=50, default="Mid-Level")
-    resume_id = serializers.IntegerField(required=False, allow_null=True)
+    experience = serializers.CharField(max_length=50, required=False, default="Mid-Level")
+    resume_id = serializers.CharField(max_length=255, required=False, allow_null=True, allow_blank=True)
 
 class CareerRoadmapInputSerializer(serializers.Serializer):
     current_role = serializers.CharField(max_length=255, required=False, default="Software Developer", allow_blank=True)
