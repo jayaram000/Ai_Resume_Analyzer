@@ -11,5 +11,5 @@ abstract class ResumeRepository {
   Future<Result<void>> saveResumeContent(String resumeId, String content, {String type = 'diff_improved'});
   Future<Result<JDMatchEntity>> calculateJDMatch(String resumeId, String jobDescription);
   Future<Result<Map<String, dynamic>>> autoTailorResume(String resumeId, String jobDescription);
-  Future<Result<List<dynamic>>> getMatchingJobs(String resumeId);
+  Future<Result<List<dynamic>>> getMatchingJobs(String resumeId, {String? location});
 }

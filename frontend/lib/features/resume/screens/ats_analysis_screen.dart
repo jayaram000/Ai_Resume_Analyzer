@@ -38,6 +38,23 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
   Map<String, dynamic>? _improvementData;
 
   final TextEditingController _jdController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+  String _selectedLocation = "";
+  String _detectedRole = "Software Developer";
+  bool _isJobsLoading = false;
+  final List<String> _quickLocations = [
+    "Trivandrum",
+    "Kochi",
+    "Kerala",
+    "Bengaluru",
+    "Hyderabad",
+    "Mumbai",
+    "Chennai",
+    "Remote",
+    "London",
+    "USA",
+  ];
+
   bool _isJdLoading = false;
   Map<String, dynamic>? _jdMatchData;
   String? _jdErrorMessage;
@@ -50,6 +67,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
   List<dynamic> _tailorKeywordsAdded = [];
 
   List<dynamic> _matchingJobs = [];
+  Map<String, String> _userJobStatuses = {};
 
   // INTERACTIVE RED / GREEN DIFF SUGGESTIONS STATE
   late List<Map<String, dynamic>> _diffSuggestions;
@@ -67,13 +85,157 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
       _jdController.text = widget.initialJdText!;
     }
     _loadAnalysisData();
+    _loadUserJobStatuses();
   }
+
+  Future<void> _loadUserJobStatuses() async {
+    try {
+      final res = await sl<ApiClient>().get('jobs/selected/');
+      if (res.statusCode == 200) {
+        final List list = (res.data is List) ? res.data : (res.data['data'] ?? []);
+        final Map<String, String> map = {};
+        for (var item in list) {
+          final comp = (item['company_name'] ?? '').toString().toLowerCase().trim();
+          final ttl = (item['job_title'] ?? '').toString().toLowerCase().trim();
+          if (comp.isNotEmpty && ttl.isNotEmpty) {
+            map['${comp}_$ttl'] = (item['status'] ?? 'SAVED').toString();
+          }
+          if (item['job'] != null && item['job'] is Map && item['job']['id'] != null) {
+            map[item['job']['id'].toString()] = (item['status'] ?? 'SAVED').toString();
+          }
+          if (item['id'] != null) {
+            map[item['id'].toString()] = (item['status'] ?? 'SAVED').toString();
+          }
+        }
+        if (mounted) {
+          setState(() {
+            _userJobStatuses = map;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _updateJobTrackerStatus(dynamic job, String newStatus) async {
+    final title = (job is Map ? (job['title'] ?? job['job_title']) : null) ?? 'Software Developer';
+    final company = (job is Map ? (job['company_name'] ?? job['company']) : null) ?? 'TechCorp Solutions';
+    final location = (job is Map ? job['location'] : null) ?? _selectedLocation;
+    final applyLink = (job is Map ? (job['apply_link'] ?? job['url'] ?? job['apply_url']) : null) ?? '';
+    final jobId = (job is Map ? job['id'] : null)?.toString();
+
+    final key = '${company.toLowerCase().trim()}_${title.toLowerCase().trim()}';
+    setState(() {
+      _userJobStatuses[key] = newStatus;
+      if (jobId != null) _userJobStatuses[jobId] = newStatus;
+    });
+
+    try {
+      final res = await sl<ApiClient>().post('jobs/selected/', data: {
+        if (jobId != null) 'job_id': jobId,
+        'company_name': company,
+        'job_title': title,
+        'location': location,
+        'apply_link': applyLink,
+        'status': newStatus,
+      });
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        if (mounted) {
+          final label = _statusTitles[newStatus] ?? newStatus;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("✔ Moved to '$label' in Your Jobs!"),
+              backgroundColor: _statusColors[newStatus] ?? const Color(0xFF14B8A6),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error updating job tracker: $e"), backgroundColor: Colors.redAccent),
+        );
+      }
+    }
+  }
+
+  static const Map<String, String> _statusTitles = {
+    'SAVED': 'Saved',
+    'SHORTLISTED': 'Shortlisted',
+    'APPLIED': 'Applied',
+    'INTERVIEWING': 'Interviewing',
+    'OFFER_RECEIVED': 'Offered',
+    'REJECTED': 'Rejected',
+  };
+
+  static const Map<String, Color> _statusColors = {
+    'SAVED': Color(0xFF6366F1),
+    'SHORTLISTED': Color(0xFFF59E0B),
+    'APPLIED': Color(0xFF3B82F6),
+    'INTERVIEWING': Color(0xFF8B5CF6),
+    'OFFER_RECEIVED': Color(0xFF22C55E),
+    'REJECTED': Color(0xFFEF4444),
+  };
+
+  static const Map<String, IconData> _statusIcons = {
+    'SAVED': Icons.bookmark_rounded,
+    'SHORTLISTED': Icons.star_rounded,
+    'APPLIED': Icons.send_rounded,
+    'INTERVIEWING': Icons.forum_rounded,
+    'OFFER_RECEIVED': Icons.emoji_events_rounded,
+    'REJECTED': Icons.cancel_rounded,
+  };
 
   @override
   void dispose() {
     _tabController.dispose();
     _jdController.dispose();
+    _locationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchJobsForLocation([String? location]) async {
+    final targetLoc = location ?? (_locationController.text.trim().isNotEmpty ? _locationController.text.trim() : null);
+    setState(() {
+      _isJobsLoading = true;
+      if (targetLoc != null && targetLoc.isNotEmpty) {
+        _selectedLocation = targetLoc;
+        _locationController.text = targetLoc;
+      }
+    });
+
+    try {
+      final locQuery = (targetLoc != null && targetLoc.trim().isNotEmpty)
+          ? '?location=${Uri.encodeComponent(targetLoc.trim())}'
+          : '';
+      final response = await sl<ApiClient>().get('jobs/resume-matches/${widget.resumeId}/$locQuery');
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        final list = (data is Map && data['data'] is List) ? data['data'] : (data is List ? data : []);
+        final detectedLoc = (data is Map && data['detected_location'] != null) ? data['detected_location'].toString() : null;
+        final searchedLoc = (data is Map && data['searched_location'] != null) ? data['searched_location'].toString() : null;
+        final detectedRole = (data is Map && data['detected_role'] != null) ? data['detected_role'].toString() : "Software Developer";
+
+        final finalLoc = searchedLoc ?? detectedLoc ?? targetLoc ?? "Remote";
+        if (mounted) {
+          setState(() {
+            _matchingJobs = list;
+            _selectedLocation = finalLoc;
+            _locationController.text = finalLoc;
+            _detectedRole = detectedRole;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Location jobs fetch error: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isJobsLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadAnalysisData() async {
@@ -160,11 +322,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
         _jdTailoredMarkdown = jdContentRes.data!;
       }
 
-      // 5. Matching jobs
-      final jobsRes = await resumeRepo.getMatchingJobs(widget.resumeId);
-      if (jobsRes.isSuccess && jobsRes.data != null) {
-        _matchingJobs = jobsRes.data!;
-      }
+      // 5. Matching jobs for resume's detected location
+      await _fetchJobsForLocation();
     } catch (e) {
       debugPrint("General ATS loading error: $e");
     } finally {
@@ -633,107 +792,31 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     );
   }
 
-  void _showJobDetailModal(Map<String, dynamic> job) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+  Future<void> _openUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uri);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Opening link: $url")),
+        );
+      }
+    }
+  }
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.work_rounded, color: Color(0xFF6366F1), size: 28),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          job['title'] ?? "Software Engineer",
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary),
-                        ),
-                        Text(
-                          job['company_name'] ?? "TechCorp Solutions",
-                          style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF22C55E).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      "${job['match_score'] ?? 85}% Match",
-                      style: const TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              const Divider(height: 32),
-              Text("Job Description & Requirements", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textPrimary)),
-              const SizedBox(height: 8),
-              Text(
-                job['description'] ?? "We are seeking a software engineer with strong experience in Python, REST APIs, and modern frontend frameworks.",
-                style: TextStyle(fontSize: 13, height: 1.5, color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155)),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _tabController.animateTo(1);
-                    _jdController.text = job['description'] ?? job['title'] ?? "";
-                    _calculateJdMatch();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6366F1),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text("Run Interactive Match Breakdown", style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Future<void> _applyToJob(dynamic job) async {
+    final String? applyLink = (job is Map) ? (job['apply_link'] ?? job['url'] ?? job['apply_url']) : null;
+    final String title = (job is Map ? (job['title'] ?? job['job_title'] ?? '') : '').toString();
+    final String company = (job is Map ? (job['company_name'] ?? job['company'] ?? '') : '').toString().trim();
+    final String location = (job is Map ? (job['location'] ?? '') : '').toString();
+    final fallbackUrl = 'https://www.google.com/search?q=${Uri.encodeComponent('$company $title careers $location')}';
+    final urlToOpen = (applyLink != null && applyLink.startsWith('http')) ? applyLink : fallbackUrl;
+    _openUrl(urlToOpen);
   }
 
   @override
@@ -881,103 +964,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                           ),
                           const SizedBox(height: 24),
 
-                          // MATCHING JOB CARD PREVIEW
-                          Text(
-                            "Top Matching Role",
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: cardBg,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: borderColor),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF6366F1).withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: const Icon(Icons.business_center_rounded, color: Color(0xFF6366F1), size: 28),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _matchingJobs.isNotEmpty ? (_matchingJobs[0]['title'] ?? "Software Developer") : "Senior Full Stack Engineer",
-                                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
-                                      ),
-                                      Text(
-                                        _matchingJobs.isNotEmpty ? (_matchingJobs[0]['company_name'] ?? "TechCorp Solutions") : "InnovateX Labs",
-                                        style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Wrap(
-                                        spacing: 6,
-                                        children: ["Python", "Django", "PostgreSQL", "REST APIs"]
-                                            .map((tag) => Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                                  decoration: BoxDecoration(
-                                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-                                                    borderRadius: BorderRadius.circular(6),
-                                                  ),
-                                                  child: Text(tag, style: const TextStyle(fontSize: 11)),
-                                                ))
-                                            .toList(),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Column(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF22C55E).withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        "${_matchingJobs.isNotEmpty ? (_matchingJobs[0]['match_score'] ?? 85) : 85}% Match",
-                                        style: const TextStyle(
-                                          color: Color(0xFF22C55E),
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        if (_matchingJobs.isNotEmpty) {
-                                          _showJobDetailModal(_matchingJobs[0]);
-                                        } else {
-                                          _showJobDetailModal({
-                                            "title": "Senior Full Stack Engineer",
-                                            "company_name": "InnovateX Labs",
-                                            "description": "Designing high-throughput microservices, REST APIs, and modern Flutter & Django web apps.",
-                                            "match_score": 85
-                                          });
-                                        }
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF6366F1),
-                                        foregroundColor: Colors.white,
-                                        elevation: 0,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                      ),
-                                      child: const Text("View Job Match", style: TextStyle(fontSize: 12)),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
+                          // REAL-TIME MATCHING JOBS SECTION
+                          _buildRealTimeJobsSection(cardBg, borderColor, textPrimary, textSecondary, isDark),
                         ],
                       ),
                     ),
@@ -1029,61 +1017,201 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                             children: [
                               ElevatedButton.icon(
                                 onPressed: _isJdLoading ? null : _calculateJdMatch,
-                                icon: const Icon(Icons.analytics_rounded, size: 18),
-                                label: const Text("Run JD Match Analysis"),
+                                icon: _isJdLoading 
+                                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                    : const Icon(Icons.analytics_rounded, size: 18),
+                                label: Text(_isJdLoading ? "Analyzing Match..." : "Run JD Match Analysis"),
                                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1), foregroundColor: Colors.white),
                               ),
                               const SizedBox(width: 12),
                               OutlinedButton.icon(
                                 onPressed: _isTailorLoading ? null : _generateTailoredResume,
-                                icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                                label: const Text("Auto-Tailor Resume"),
+                                icon: _isTailorLoading
+                                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Color(0xFF14B8A6), strokeWidth: 2))
+                                    : const Icon(Icons.auto_awesome_rounded, size: 18),
+                                label: Text(_isTailorLoading ? "Tailoring..." : "Auto-Tailor Resume"),
                                 style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF14B8A6)),
                               ),
                             ],
                           ),
-                          if (_jdErrorMessage != null) ...[
-                            const SizedBox(height: 12),
-                            Text(_jdErrorMessage!, style: const TextStyle(color: Colors.red, fontSize: 13)),
-                          ],
-                          if (_jdMatchData != null) ...[
+                          if (_isJdLoading) ...[
                             const SizedBox(height: 24),
                             Container(
-                              padding: const EdgeInsets.all(20),
+                              padding: const EdgeInsets.all(28),
+                              alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: cardBg,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(color: borderColor),
                               ),
+                              child: Column(
+                                children: [
+                                  const CircularProgressIndicator(color: Color(0xFF6366F1)),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    "Deep comparing resume against job requirements...",
+                                    style: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else if (_jdErrorMessage != null) ...[
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
+                              ),
                               child: Row(
                                 children: [
-                                  CircularScoreGauge(
-                                    score: (_jdMatchData!['match_score'] as num?)?.toInt() ?? 75,
-                                    size: 90,
-                                    strokeWidth: 10,
-                                    progressColor: const Color(0xFF22C55E),
-                                  ),
-                                  const SizedBox(width: 20),
+                                  const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444)),
+                                  const SizedBox(width: 12),
                                   Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "Job Fit Score: ${(_jdMatchData!['match_score'] as num?)?.toInt() ?? 75}%",
-                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
-                                        ),
-                                        Text(
-                                          "Matched Skills: ${((_jdMatchData!['matched_skills'] as List?) ?? []).join(', ')}",
-                                          style: const TextStyle(fontSize: 12, color: Color(0xFF22C55E)),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          "Missing Skills: ${((_jdMatchData!['missing_skills'] as List?) ?? []).join(', ')}",
-                                          style: const TextStyle(fontSize: 12, color: Color(0xFFEF4444)),
-                                        ),
-                                      ],
+                                    child: Text(
+                                      _jdErrorMessage!,
+                                      style: const TextStyle(color: Color(0xFFEF4444), fontSize: 13),
                                     ),
                                   ),
+                                  TextButton(
+                                    onPressed: _calculateJdMatch,
+                                    child: const Text("Retry", style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else if (_jdMatchData != null) ...[
+                            const SizedBox(height: 24),
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: cardBg,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: borderColor),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircularScoreGauge(
+                                        score: (_jdMatchData!['match_score'] as num?)?.toInt() ?? 75,
+                                        size: 90,
+                                        strokeWidth: 10,
+                                        progressColor: const Color(0xFF22C55E),
+                                      ),
+                                      const SizedBox(width: 24),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              "Job Description Fit: ${(_jdMatchData!['match_score'] as num?)?.toInt() ?? 75}%",
+                                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              ((_jdMatchData!['match_score'] as num?)?.toInt() ?? 75) >= 75
+                                                  ? "Excellent alignment with this position's core requirements."
+                                                  : "Moderate alignment. Review missing skills to maximize interview callback rates.",
+                                              style: TextStyle(fontSize: 13, color: textSecondary),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const Divider(height: 32),
+                                  // Matched Skills
+                                  Text("Matched Skills", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textPrimary)),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: (((_jdMatchData!['matched_skills'] as List?) ?? []).isEmpty
+                                            ? ["Core technical stack"]
+                                            : ((_jdMatchData!['matched_skills'] as List).map((e) => e.toString()).toList()))
+                                        .map((s) => Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF22C55E).withOpacity(0.12),
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.3)),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.check_circle_rounded, color: Color(0xFF22C55E), size: 14),
+                                                  const SizedBox(width: 5),
+                                                  Text(s, style: const TextStyle(fontSize: 12, color: Color(0xFF22C55E), fontWeight: FontWeight.w600)),
+                                                ],
+                                              ),
+                                            ))
+                                        .toList(),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  // Missing Skills
+                                  Text("Missing / Recommended Skills", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textPrimary)),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: (((_jdMatchData!['missing_skills'] as List?) ?? []).isEmpty
+                                            ? ["None detected - strong coverage"]
+                                            : ((_jdMatchData!['missing_skills'] as List).map((e) => e.toString()).toList()))
+                                        .map((s) => Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFF59E0B).withOpacity(0.12),
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFF59E0B), size: 14),
+                                                  const SizedBox(width: 5),
+                                                  Text(s, style: const TextStyle(fontSize: 12, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600)),
+                                                ],
+                                              ),
+                                            ))
+                                        .toList(),
+                                  ),
+                                  if (_jdMatchData!['recommendations'] != null && _jdMatchData!['recommendations'].toString().isNotEmpty) ...[
+                                    const SizedBox(height: 20),
+                                    Container(
+                                      padding: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF6366F1).withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.2)),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Icon(Icons.lightbulb_outline_rounded, color: Color(0xFF6366F1), size: 20),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  "Actionable Recommendations",
+                                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF6366F1)),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  _jdMatchData!['recommendations'].toString(),
+                                                  style: TextStyle(fontSize: 13, height: 1.4, color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155)),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -1521,4 +1649,714 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
       ),
     );
   }
+
+  Widget _buildRealTimeJobsSection(Color cardBg, Color borderColor, Color textPrimary, Color textSecondary, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6366F1).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.radar_rounded, color: Color(0xFF6366F1), size: 22),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Real-Time Matching Jobs",
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textPrimary),
+                    ),
+                    Text(
+                      "Live opportunities ranked by resume skills & location",
+                      style: TextStyle(fontSize: 12, color: textSecondary),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF22C55E).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.3)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.circle, color: Color(0xFF22C55E), size: 8),
+                  SizedBox(width: 6),
+                  Text(
+                    "Live Match",
+                    style: TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.bold, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Location Search Input Bar & Quick Presets
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardBg,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: borderColor),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _locationController,
+                      style: TextStyle(color: textPrimary, fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: "Enter location (e.g. Bengaluru, Kochi, London, Remote)...",
+                        hintStyle: TextStyle(color: textSecondary, fontSize: 13),
+                        prefixIcon: const Icon(Icons.location_on_rounded, color: Color(0xFF6366F1), size: 20),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: borderColor),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: borderColor),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                        ),
+                      ),
+                      onSubmitted: (val) => _fetchJobsForLocation(val),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: _isJobsLoading ? null : () => _fetchJobsForLocation(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _isJobsLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text("Search", style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Preset chips
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _quickLocations.map((loc) {
+                    final isSelected = _selectedLocation.toLowerCase() == loc.toLowerCase();
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: FilterChip(
+                        label: Text(loc),
+                        selected: isSelected,
+                        selectedColor: const Color(0xFF6366F1).withOpacity(0.2),
+                        checkmarkColor: const Color(0xFF6366F1),
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? const Color(0xFF6366F1) : textSecondary,
+                        ),
+                        backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(
+                            color: isSelected ? const Color(0xFF6366F1) : borderColor,
+                          ),
+                        ),
+                        onSelected: (selected) {
+                          _locationController.text = loc;
+                          _fetchJobsForLocation(loc);
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Live Platform Search Header Bar
+        Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.travel_explore_rounded, color: Color(0xFF6366F1), size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Direct Search on Top Job Portals",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textPrimary),
+                        ),
+                        Text(
+                          "1-Tap search live openings for your role in $_selectedLocation",
+                          style: TextStyle(fontSize: 12, color: textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildPlatformSearchChip(
+                      label: "LinkedIn Jobs",
+                      icon: Icons.business_center_rounded,
+                      color: const Color(0xFF0A66C2),
+                      onTap: () {
+                        final role = _detectedRole.isNotEmpty ? _detectedRole : "Software Developer";
+                        _openUrl("https://www.linkedin.com/jobs/search/?keywords=${Uri.encodeComponent(role)}&location=${Uri.encodeComponent(_selectedLocation)}");
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _buildPlatformSearchChip(
+                      label: "Naukri.com",
+                      icon: Icons.work_history_rounded,
+                      color: const Color(0xFF2B5BE7),
+                      onTap: () {
+                        final role = _detectedRole.isNotEmpty ? _detectedRole : "Software Developer";
+                        final locSlug = _selectedLocation.toLowerCase().replaceAll(' ', '-');
+                        _openUrl("https://www.naukri.com/jobs-in-$locSlug?kwd=${Uri.encodeComponent(role)}");
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _buildPlatformSearchChip(
+                      label: "Indeed",
+                      icon: Icons.search_rounded,
+                      color: const Color(0xFF2164F3),
+                      onTap: () {
+                        final role = _detectedRole.isNotEmpty ? _detectedRole : "Software Developer";
+                        _openUrl("https://www.indeed.com/jobs?q=${Uri.encodeComponent(role)}&l=${Uri.encodeComponent(_selectedLocation)}");
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _buildPlatformSearchChip(
+                      label: "Foundit",
+                      icon: Icons.flash_on_rounded,
+                      color: const Color(0xFF8B5CF6),
+                      onTap: () {
+                        final role = _detectedRole.isNotEmpty ? _detectedRole : "Software Developer";
+                        _openUrl("https://www.foundit.in/srp/results?query=${Uri.encodeComponent(role)}&locations=${Uri.encodeComponent(_selectedLocation)}");
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _buildPlatformSearchChip(
+                      label: "Google Jobs",
+                      icon: Icons.travel_explore_rounded,
+                      color: const Color(0xFFEA4335),
+                      onTap: () {
+                        final role = _detectedRole.isNotEmpty ? _detectedRole : "Software Developer";
+                        _openUrl("https://www.google.com/search?q=${Uri.encodeComponent('$role jobs in $_selectedLocation')}&ibp=htl;jobs");
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Jobs Display
+        if (_isJobsLoading) ...[
+          Container(
+            padding: const EdgeInsets.all(32),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: borderColor),
+            ),
+            child: Column(
+              children: [
+                const CircularProgressIndicator(color: Color(0xFF6366F1)),
+                const SizedBox(height: 16),
+                Text(
+                  "Finding real-world matching roles in $_selectedLocation...",
+                  style: TextStyle(color: textSecondary, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ] else if (_matchingJobs.isEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(32),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: borderColor),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.work_off_rounded, color: Color(0xFF94A3B8), size: 40),
+                const SizedBox(height: 12),
+                Text(
+                  "No matching jobs found in $_selectedLocation.",
+                  style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  "Try searching another city or switch back to Remote.",
+                  style: TextStyle(color: textSecondary, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    _locationController.text = "Remote";
+                    _fetchJobsForLocation("Remote");
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text("Show Remote Jobs"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else ...[
+          ..._matchingJobs.map((jobItem) {
+            final job = (jobItem is Map && jobItem.containsKey('job')) ? jobItem['job'] : jobItem;
+            final int matchScore = (jobItem is Map && jobItem.containsKey('match_score'))
+                ? (jobItem['match_score'] as num?)?.toInt() ?? 85
+                : (job is Map && job.containsKey('match_score') ? (job['match_score'] as num?)?.toInt() ?? 85 : 85);
+
+            final String title = (job is Map ? job['title'] : null) ?? 'Software Developer';
+            final String company = (job is Map ? job['company_name'] : null) ?? 'TechCorp Solutions';
+            final String location = (job is Map ? job['location'] : null) ?? _selectedLocation;
+            final String description = (job is Map ? job['description'] : null) ?? 'Exciting opportunity for experienced developers.';
+
+            List<String> tags = [];
+            if (job is Map && job['raw_data'] is Map && job['raw_data']['required_skills'] is List) {
+              tags = (job['raw_data']['required_skills'] as List).map((e) => e.toString()).toList();
+            } else if (job is Map && job['raw_data'] is Map && job['raw_data']['tags'] is List) {
+              tags = (job['raw_data']['tags'] as List).map((e) => e.toString()).toList();
+            }
+            if (tags.isEmpty) {
+              tags = ["Python", "Django", "REST APIs", "PostgreSQL"];
+            }
+
+            final jobKey = '${company.toLowerCase().trim()}_${title.toLowerCase().trim()}';
+            final jobIdStr = (job is Map ? job['id'] : null)?.toString();
+            final currentStatus = _userJobStatuses[jobKey] ?? (jobIdStr != null ? _userJobStatuses[jobIdStr] : null);
+
+            String sourcePlatform = "Official Career Portal";
+            if (job is Map && job['raw_data'] is Map && job['raw_data']['source_platform'] != null) {
+              sourcePlatform = job['raw_data']['source_platform'].toString();
+            } else if (job is Map && job['source_platform'] != null) {
+              sourcePlatform = job['source_platform'].toString();
+            } else if (job is Map && job['source'] != null) {
+              sourcePlatform = job['source'].toString();
+            }
+
+            Color platformColor = const Color(0xFF6366F1);
+            IconData platformIcon = Icons.verified_user_rounded;
+            final srcLower = sourcePlatform.toLowerCase();
+            if (srcLower.contains("linkedin")) {
+              platformColor = const Color(0xFF0A66C2);
+              platformIcon = Icons.business_center_rounded;
+            } else if (srcLower.contains("naukri")) {
+              platformColor = const Color(0xFF2B5BE7);
+              platformIcon = Icons.work_history_rounded;
+            } else if (srcLower.contains("indeed")) {
+              platformColor = const Color(0xFF2164F3);
+              platformIcon = Icons.search_rounded;
+            } else if (srcLower.contains("remotive")) {
+              platformColor = const Color(0xFF10B981);
+              platformIcon = Icons.public_rounded;
+            } else if (srcLower.contains("jobicy")) {
+              platformColor = const Color(0xFF8B5CF6);
+              platformIcon = Icons.bolt_rounded;
+            } else if (srcLower.contains("themuse") || srcLower.contains("muse")) {
+              platformColor = const Color(0xFFEC4899);
+              platformIcon = Icons.hub_rounded;
+            } else if (srcLower.contains("arbeitnow")) {
+              platformColor = const Color(0xFFF59E0B);
+              platformIcon = Icons.domain_rounded;
+            } else if (srcLower.contains("allianz")) {
+              platformColor = const Color(0xFF003781);
+              platformIcon = Icons.shield_rounded;
+            } else if (srcLower.contains("ust")) {
+              platformColor = const Color(0xFFE11931);
+              platformIcon = Icons.corporate_fare_rounded;
+            } else if (srcLower.contains("tcs") || srcLower.contains("ibegin")) {
+              platformColor = const Color(0xFF0078D4);
+              platformIcon = Icons.apartment_rounded;
+            }
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: borderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: platformColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(platformIcon, color: platformColor, size: 24),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Text(
+                                  company,
+                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textSecondary),
+                                ),
+                                const SizedBox(width: 8),
+                                Icon(Icons.location_on_outlined, size: 14, color: textSecondary),
+                                const SizedBox(width: 2),
+                                Expanded(
+                                  child: Text(
+                                    location,
+                                    style: TextStyle(fontSize: 12, color: textSecondary),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF22C55E).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          "$matchScore% Match",
+                          style: const TextStyle(
+                            color: Color(0xFF22C55E),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    description,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: tags.take(5).map((tag) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            tag,
+                            style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155)),
+                          ),
+                        )).toList(),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: platformColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: platformColor.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(platformIcon, size: 13, color: platformColor),
+                            const SizedBox(width: 6),
+                            Text(
+                              "Direct Opening • $sourcePlatform",
+                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: platformColor),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // Direct Platform Quick Search Links for this specific role
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        Text("Search on:", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textSecondary)),
+                        const SizedBox(width: 8),
+                        _buildMiniPlatformChip(
+                          label: "LinkedIn",
+                          color: const Color(0xFF0A66C2),
+                          onTap: () => _openUrl("https://www.linkedin.com/jobs/search/?keywords=${Uri.encodeComponent('$company $title')}&location=${Uri.encodeComponent(location)}"),
+                        ),
+                        const SizedBox(width: 6),
+                        _buildMiniPlatformChip(
+                          label: "Naukri",
+                          color: const Color(0xFF2B5BE7),
+                          onTap: () => _openUrl("https://www.naukri.com/jobs-in-${Uri.encodeComponent(location.toLowerCase().replaceAll(' ', '-'))}?kwd=${Uri.encodeComponent('$company $title')}"),
+                        ),
+                        const SizedBox(width: 6),
+                        _buildMiniPlatformChip(
+                          label: "Indeed",
+                          color: const Color(0xFF2164F3),
+                          onTap: () => _openUrl("https://www.indeed.com/jobs?q=${Uri.encodeComponent('$company $title')}&l=${Uri.encodeComponent(location)}"),
+                        ),
+                        const SizedBox(width: 6),
+                        _buildMiniPlatformChip(
+                          label: "Google Jobs",
+                          color: const Color(0xFFEA4335),
+                          onTap: () => _openUrl("https://www.google.com/search?q=${Uri.encodeComponent('$company $title jobs in $location')}&ibp=htl;jobs"),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      // Move to / Track Status Dropdown
+                      PopupMenuButton<String>(
+                        tooltip: "Save & Move to Your Jobs",
+                        onSelected: (newSt) => _updateJobTrackerStatus(job, newSt),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: currentStatus != null
+                                ? (_statusColors[currentStatus] ?? const Color(0xFF6366F1)).withOpacity(0.12)
+                                : (isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: currentStatus != null
+                                  ? (_statusColors[currentStatus] ?? const Color(0xFF6366F1)).withOpacity(0.4)
+                                  : borderColor,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                currentStatus != null ? (_statusIcons[currentStatus] ?? Icons.bookmark_rounded) : Icons.bookmark_add_outlined,
+                                size: 14,
+                                color: currentStatus != null ? (_statusColors[currentStatus] ?? const Color(0xFF6366F1)) : textPrimary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                currentStatus != null ? (_statusTitles[currentStatus] ?? currentStatus) : "Track Job",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: currentStatus != null ? (_statusColors[currentStatus] ?? const Color(0xFF6366F1)) : textPrimary,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(Icons.arrow_drop_down_rounded, size: 16, color: textSecondary),
+                            ],
+                          ),
+                        ),
+                        itemBuilder: (ctx) => [
+                          ..._statusTitles.entries.map((entry) {
+                            final st = entry.key;
+                            final label = entry.value;
+                            final color = _statusColors[st] ?? const Color(0xFF6366F1);
+                            final icon = _statusIcons[st] ?? Icons.circle;
+                            return PopupMenuItem(
+                              value: st,
+                              child: Row(
+                                children: [
+                                  Icon(icon, color: color, size: 16),
+                                  const SizedBox(width: 10),
+                                  Text(label, style: TextStyle(fontWeight: currentStatus == st ? FontWeight.bold : FontWeight.normal)),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton.icon(
+                        onPressed: () => _applyToJob(job),
+                        icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                        label: const Text("Apply Now", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: platformColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          _tabController.animateTo(1);
+                          _jdController.text = description.length > 30 ? description : title;
+                          _calculateJdMatch();
+                        },
+                        icon: const Icon(Icons.analytics_rounded, size: 15),
+                        label: const Text("View Job Match", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPlatformSearchChip({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withOpacity(0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: color),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.arrow_outward_rounded, size: 13, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniPlatformChip({
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+            ),
+            const SizedBox(width: 3),
+            Icon(Icons.open_in_new_rounded, size: 10, color: color),
+          ],
+        ),
+      ),
+    );
+  }
 }
+

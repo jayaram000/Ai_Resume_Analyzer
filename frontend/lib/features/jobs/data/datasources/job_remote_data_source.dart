@@ -19,15 +19,15 @@ class JobRemoteDataSourceImpl implements JobRemoteDataSource {
   Future<List<JobModel>> searchJobs({String? query, String? location, String? jobType}) async {
     try {
       final queryParams = <String, dynamic>{};
-      if (query != null && query.isNotEmpty) queryParams['search'] = query;
+      if (query != null && query.isNotEmpty) queryParams['query'] = query;
       if (location != null && location.isNotEmpty) queryParams['location'] = location;
       if (jobType != null && jobType.isNotEmpty) queryParams['job_type'] = jobType;
 
-      final response = await apiClient.get('jobs/', queryParameters: queryParams);
+      final response = await apiClient.get('jobs/search/', queryParameters: queryParams);
       if (response.statusCode == 200 && response.data != null) {
         final List<dynamic> list = response.data is List
             ? response.data
-            : (response.data['results'] ?? response.data['data'] ?? []);
+            : (response.data['data'] ?? response.data['results'] ?? []);
         return list.map((item) => JobModel.fromJson(item as Map<String, dynamic>)).toList();
       }
       return [];

@@ -117,9 +117,9 @@ class ResumeRepositoryImpl implements ResumeRepository {
   }
 
   @override
-  Future<Result<List<dynamic>>> getMatchingJobs(String resumeId) async {
+  Future<Result<List<dynamic>>> getMatchingJobs(String resumeId, {String? location}) async {
     try {
-      final jobs = await remoteDataSource.getMatchingJobs(resumeId);
+      final jobs = await remoteDataSource.getMatchingJobs(resumeId, location: location);
       return Result.success(jobs);
     } catch (e) {
       return Result.failure(ServerFailure(e.toString()));

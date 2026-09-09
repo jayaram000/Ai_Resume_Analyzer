@@ -22,6 +22,7 @@ urlpatterns = [
     path("improve/<uuid:resume_id>/download/", DownloadImprovedResumeView.as_view(), name="analysis-improve-download"),
     path("match-position/<uuid:resume_id>/", PositionAnalysisView.as_view(), name="analysis-match-position"),
     path("match-jd/<uuid:resume_id>/", JDMatchAnalysisView.as_view(), name="analysis-match-jd"),
+    path("jd-match/<uuid:resume_id>/", JDMatchAnalysisView.as_view(), name="analysis-jd-match"),
     path("skill-gap/", SkillGapAnalysisView.as_view(), name="analysis-skill-gap"),
     path("skill-gap/<uuid:pk>/", views.SkillGapDetailView.as_view(), name="analysis-skill-gap-detail"),
     path('skill-gap/<uuid:pk>/pdf/', views.DownloadSkillGapPDFView.as_view(), name='skill-gap-pdf'),

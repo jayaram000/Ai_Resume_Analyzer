@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import urllib.parse
 from common.gemini import call_gemini_api
 from resumes.models import Resume
 from analysis.models import (
@@ -700,14 +701,20 @@ def generate_position_analysis(resume: Resume, target_position: str) -> Position
 def generate_jd_match(resume: Resume, job_description: str) -> JDMatchAnalysis:
     result = JDMatchingService.match_resume_to_jd(resume, job_description)
     
+    ats_comp = result.get("ats_compatibility")
+    if not isinstance(ats_comp, dict):
+        ats_comp = {}
+    if "recommendations" not in ats_comp and result.get("recommendations"):
+        ats_comp["recommendations"] = result.get("recommendations")
+    
     analysis = JDMatchAnalysis.objects.create(
         resume=resume,
         job_description=job_description,
         match_score=result.get("match_score", 50),
         missing_keywords=result.get("missing_keywords", []),
-        matched_skills=result.get("matched_skills", []), # Note: matches JDMatchAnalysis model fields
+        matched_skills=result.get("matched_skills", []),
         missing_skills=result.get("missing_skills", []),
-        ats_compatibility=result.get("ats_compatibility", {})
+        ats_compatibility=ats_comp
     )
     return analysis
 
@@ -942,7 +949,7 @@ Your response MUST be a single valid JSON object matching this schema:
 }}
 """
     try:
-        result = call_gemini_api(prompt, response_mime_type="application/json", max_retries=2)
+        result = call_gemini_api(prompt, response_mime_type="application/json", max_retries=1)
         if not isinstance(result, dict):
             result = {}
     except Exception as e:
@@ -959,8 +966,169 @@ Your response MUST be a single valid JSON object matching this schema:
     popular_courses = result.get("popular_courses", [])
     free_courses = result.get("free_courses", [])
 
+    q_target = urllib.parse.quote_plus(target_role)
+
+    if not learning_path:
+        learning_path = [
+            {
+                "phase": f"Phase 1 (Months 1-2): Core {target_role} Foundations",
+                "guidance": "Master fundamental architecture patterns, core tools, and production workflows.",
+                "milestones": [
+                    f"Master core tools, platforms, and syntax for {target_role}",
+                    "Build automated pipelines and modular services",
+                    "Implement enterprise security best practices and automated testing"
+                ]
+            },
+            {
+                "phase": "Phase 2 (Months 3-4): Scalable Distributed Infrastructure & Cloud",
+                "guidance": "Focus on cloud deployment, container orchestration, and asynchronous systems.",
+                "milestones": [
+                    "Deploy containerized microservices to cloud clusters (Kubernetes / ECS)",
+                    "Implement centralized monitoring, logging, and observability",
+                    "Automate infrastructure provisioning with Infrastructure-as-Code (IaC)"
+                ]
+            },
+            {
+                "phase": "Phase 3 (Months 5-6): High Availability, SRE & Leadership",
+                "guidance": "Develop advanced reliability engineering, disaster recovery, and architecture leadership.",
+                "milestones": [
+                    "Design high-throughput, fault-tolerant production architecture",
+                    "Establish SLIs/SLOs, automated failover, and incident management",
+                    "Lead technical architecture design reviews and mentorship"
+                ]
+            }
+        ]
+
+    if not technologies:
+        role_lower = target_role.lower()
+        if "devops" in role_lower or "cloud" in role_lower or "sre" in role_lower:
+            technologies = ["Docker", "Kubernetes", "Terraform", "AWS / GCP", "CI/CD (GitHub Actions)", "Prometheus", "Grafana", "Ansible", "Linux", "Python / Bash"]
+        elif "python" in role_lower or "django" in role_lower:
+            technologies = ["Python 3.12", "Django", "FastAPI", "PostgreSQL", "Redis", "Docker", "Celery", "Kafka", "AWS", "Pytest"]
+        elif "java" in role_lower or "spring" in role_lower:
+            technologies = ["Java 21", "Spring Boot 3", "Hibernate/JPA", "Kafka", "PostgreSQL", "Redis", "Docker", "Kubernetes", "AWS", "JUnit 5"]
+        else:
+            technologies = ["Docker", "Kubernetes", "PostgreSQL", "Redis", "REST APIs", "CI/CD", "AWS", "Linux", "Microservices"]
+
+    if not certifications:
+        role_lower = target_role.lower()
+        if "devops" in role_lower or "cloud" in role_lower or "sre" in role_lower:
+            certifications = [
+                "AWS Certified DevOps Engineer - Professional",
+                "Certified Kubernetes Administrator (CKA)",
+                "HashiCorp Certified: Terraform Associate"
+            ]
+        else:
+            certifications = [
+                f"AWS Certified Solutions Architect - Associate",
+                f"Professional {target_role} Specialist Certification",
+                "Certified Kubernetes Application Developer (CKAD)"
+            ]
+
+    if not projects:
+        projects = [
+            {
+                "title": f"Enterprise-Scale {target_role} Automation Platform",
+                "description": "An end-to-end production platform with automated CI/CD pipelines, container orchestration, and observability.",
+                "tech_stack": technologies[:5],
+                "outcome": f"Demonstrates production-ready skills and modern engineering practices for {target_role}."
+            },
+            {
+                "title": "High-Availability Distributed Infrastructure Blueprint",
+                "description": "Multi-region scalable cloud architecture featuring automated failover, distributed caching, and zero-downtime deployments.",
+                "tech_stack": technologies[2:7],
+                "outcome": "Proves deep understanding of reliability, security, and scalability."
+            }
+        ]
+
+    if not youtube_videos:
+        youtube_videos = [
+            {
+                "title": f"Complete {target_role} Bootcamp & Roadmap",
+                "channel": "freeCodeCamp.org",
+                "url": f"https://www.youtube.com/results?search_query={q_target}+full+course",
+                "description": f"Comprehensive step-by-step masterclass covering modern {target_role} tools and best practices."
+            },
+            {
+                "title": f"{target_role} Architecture & Practical Projects",
+                "channel": "TechWorld with Nana",
+                "url": f"https://www.youtube.com/results?search_query={q_target}+techworld+with+nana",
+                "description": "Hands-on implementation of enterprise architectures and pipelines."
+            },
+            {
+                "title": "System Design & DevOps Deep Dive",
+                "channel": "ByteByteGo",
+                "url": "https://www.youtube.com/@bytebytego",
+                "description": "Visual guides to scalable system design and high-load architectures."
+            }
+        ]
+
+    if not youtube_channels:
+        youtube_channels = [
+            {
+                "channel_name": "TechWorld with Nana",
+                "focus": "DevOps, Kubernetes, Docker, CI/CD pipelines, and cloud automation.",
+                "url": "https://www.youtube.com/@TechWorldwithNana"
+            },
+            {
+                "channel_name": "freeCodeCamp.org",
+                "focus": "Full-length comprehensive engineering courses and tutorials.",
+                "url": "https://www.youtube.com/@freecodecamp"
+            },
+            {
+                "channel_name": "ByteByteGo",
+                "focus": "System design, cloud architecture diagrams, and scalability.",
+                "url": "https://www.youtube.com/@bytebytego"
+            },
+            {
+                "channel_name": "Hussein Nasser",
+                "focus": "Backend engineering, database engines, networking protocols, and performance.",
+                "url": "https://www.youtube.com/@hnasr"
+            }
+        ]
+
+    if not documentation_sites:
+        documentation_sites = [
+            {
+                "name": f"Official {target_role} Documentation",
+                "category": "Official Guides",
+                "description": "Official documentation, API references, and security best practices.",
+                "url": "https://devdocs.io"
+            },
+            {
+                "name": "GeeksforGeeks",
+                "category": "Core Concepts",
+                "description": "In-depth tutorials, system architecture patterns, and algorithms.",
+                "url": "https://www.geeksforgeeks.org"
+            },
+            {
+                "name": "roadmap.sh",
+                "category": "Role Roadmaps",
+                "description": "Community-driven visual developer roadmaps and skill guides.",
+                "url": "https://roadmap.sh"
+            }
+        ]
+
+    if not popular_courses:
+        popular_courses = [
+            {
+                "platform": "Udemy",
+                "course_name": f"{target_role} Masterclass: Zero to Hero",
+                "url": f"https://www.udemy.com/courses/search/?q={q_target}"
+            },
+            {
+                "platform": "Coursera",
+                "course_name": f"Cloud & {target_role} Professional Certificate",
+                "url": f"https://www.coursera.org/search?query={q_target}"
+            },
+            {
+                "platform": "Pluralsight",
+                "course_name": f"Advanced {target_role} Skill Path",
+                "url": f"https://www.pluralsight.com/search?q={q_target}"
+            }
+        ]
+
     if not free_courses:
-        q_target = urllib.parse.quote_plus(target_role)
         free_courses = [
             {
                 "platform": "freeCodeCamp",
@@ -1401,7 +1569,7 @@ Your output MUST be valid JSON with this exact schema:
 }}
 """
         try:
-            ai_data = call_gemini_api(prompt, response_mime_type="application/json", max_retries=2)
+            ai_data = call_gemini_api(prompt, response_mime_type="application/json", max_retries=1)
             if not isinstance(ai_data, dict):
                 ai_data = {}
         except Exception as e:
@@ -1418,6 +1586,86 @@ Your output MUST be valid JSON with this exact schema:
         recommended_projects = ai_data.get("recommended_projects", [])
         recommended_certifications = ai_data.get("recommended_certifications", [])
         resume_transition_tips = ai_data.get("resume_transition_tips", [])
+
+        if not categorized_gaps:
+            role_lower = target_role.lower()
+            if "java" in role_lower:
+                categorized_gaps = {
+                    "Core Language & Frameworks": ["Spring Boot 3", "Java 17/21", "Hibernate/JPA"],
+                    "Architecture & Microservices": ["Microservices Architecture", "Apache Kafka", "Domain-Driven Design (DDD)"],
+                    "Cloud & Infrastructure": ["Docker", "Kubernetes", "AWS ECS/EKS", "CI/CD"],
+                    "Databases & Storage": ["PostgreSQL Optimization", "Redis Caching"],
+                    "Testing & Quality": ["JUnit 5 & Mockito", "Integration Testing"]
+                }
+            elif "python" in role_lower:
+                categorized_gaps = {
+                    "Core Frameworks": ["FastAPI", "Django REST Framework", "Asyncio"],
+                    "Data & Cloud": ["PostgreSQL", "Redis", "Docker", "AWS"],
+                    "Architecture": ["Microservices", "Celery Task Queues", "System Design"],
+                    "Testing": ["Pytest", "TDD", "CI/CD Workflows"]
+                }
+            else:
+                categorized_gaps = {
+                    "Core Technologies": missing_skills_list[:3] or ["Modern Frameworks", "Core Language Internals"],
+                    "Architecture & Design": ["System Design", "Microservices", "Design Patterns"],
+                    "Cloud & DevOps": ["Docker", "CI/CD Automation", "Cloud Platforms"],
+                    "Databases & Caching": ["Relational DBs", "Distributed Caching"],
+                    "Testing & Quality": ["Unit Testing", "Code Quality Standards"]
+                }
+
+        if not roadmap:
+            roadmap = [
+                {
+                    "phase": f"Phase 1 (Months 1-2): Core {target_role} Foundations",
+                    "guidance": "Deep dive into language fundamentals, concurrency, and modern framework architectures.",
+                    "milestones": [
+                        f"Master core syntax and enterprise patterns for {target_role}",
+                        "Build production-grade REST APIs and database layers",
+                        "Implement automated unit and integration tests"
+                    ]
+                },
+                {
+                    "phase": "Phase 2 (Months 3-4): Scalable Architecture & Cloud Deployment",
+                    "guidance": "Focus on distributed system patterns, containerization, and cloud infrastructure.",
+                    "milestones": [
+                        "Containerize services with Docker and configure CI/CD pipelines",
+                        "Implement asynchronous messaging and distributed caching",
+                        "Deploy services to managed cloud environments"
+                    ]
+                },
+                {
+                    "phase": f"Phase 3 (Months 5-6): {experience} Leadership & System Design",
+                    "guidance": f"Master high-throughput system design and technical leadership for {experience} level.",
+                    "milestones": [
+                        "Architect high-availability systems with failover strategies",
+                        "Perform architectural reviews and latency optimization",
+                        "Lead system design interviews and technical RFC documentation"
+                    ]
+                }
+            ]
+
+        if not recommended_projects:
+            recommended_projects = [
+                {
+                    "title": f"Production-Grade Distributed {target_role} Service",
+                    "description": f"An enterprise-scale microservices system featuring robust authentication, rate limiting, and asynchronous messaging.",
+                    "tech_stack": missing_skills_list[:5] or ["Docker", "PostgreSQL", "Redis", "Microservices"]
+                }
+            ]
+
+        if not recommended_certifications:
+            recommended_certifications = [
+                f"Professional {target_role} Specialist Certification",
+                "AWS Certified Solutions Architect",
+                "Kubernetes Certified Developer (CKAD)"
+            ]
+
+        if not resume_transition_tips:
+            resume_transition_tips = [
+                f"Emphasize scalable backend and architecture achievements relevant to {target_role} in your bullet points.",
+                "Quantify project impact with metrics like throughput improvements, latency reduction, and user scale.",
+                f"Highlight competencies in {', '.join(missing_skills_list[:3])} prominently in your technical skills summary."
+            ]
 
         # Persist analysis in database
         gap, created = SkillGapAnalysis.objects.update_or_create(

@@ -13,7 +13,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "linkedin_url",
             "github_url",
             "current_role",
-            "years_of_experience"
+            "years_of_experience",
+            "preferences"
         ]
 
 class UserSerializer(serializers.ModelSerializer):

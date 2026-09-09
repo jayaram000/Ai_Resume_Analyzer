@@ -173,25 +173,27 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
   }
 
   Future<void> _applyJob(dynamic job) async {
-    final applyUrl =
-        job['apply_link'] ?? job['job_apply_link'] ?? 'https://apply.link';
+    final title = (job['title'] ?? 'Software Developer').toString();
+    final company = (job['company_name'] ?? job['company'] ?? '').toString().trim();
+    final location = (job['location'] ?? 'Remote').toString();
+    final searchTerms = company.isNotEmpty ? '$company $title' : title;
+    final fallbackUrl = 'https://www.linkedin.com/jobs/search/?keywords=${Uri.encodeComponent(searchTerms)}&location=${Uri.encodeComponent(location)}';
+    final rawUrl = (job['apply_link'] ?? job['job_apply_link'] ?? job['apply_url'] ?? job['url'] ?? '').toString().trim();
+    final applyUrl = (rawUrl.isNotEmpty && rawUrl.startsWith('http')) ? rawUrl : fallbackUrl;
 
     try {
       final Uri url = Uri.parse(applyUrl);
       if (await canLaunchUrl(url)) {
-        await launchUrl(url);
+        await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Opening link: $applyUrl")));
+        await launchUrl(url);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Unable to process click link: $e"),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Opening job application link...")),
+        );
+      }
     }
   }
 
@@ -432,6 +434,47 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          "Remote",
+                          "Bengaluru",
+                          "Kochi",
+                          "Hyderabad",
+                          "Mumbai",
+                          "Chennai",
+                          "London",
+                          "USA"
+                        ].map((loc) {
+                          final isSelected = _locationController.text.trim().toLowerCase() == loc.toLowerCase();
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: ActionChip(
+                              label: Text(loc),
+                              backgroundColor: isSelected
+                                  ? const Color(0xFF6366F1).withOpacity(0.3)
+                                  : const Color(0xFF1E293B),
+                              labelStyle: TextStyle(
+                                fontSize: 12,
+                                color: isSelected ? const Color(0xFF818CF8) : const Color(0xFF94A3B8),
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              side: BorderSide(
+                                color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF334155),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _locationController.text = loc;
+                                });
+                                _searchJobs();
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Row(

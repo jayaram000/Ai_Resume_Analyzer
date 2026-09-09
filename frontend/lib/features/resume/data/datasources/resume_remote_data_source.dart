@@ -13,7 +13,7 @@ abstract class ResumeRemoteDataSource {
   Future<void> saveResumeContent(String resumeId, String content, {String type = 'diff_improved'});
   Future<JDMatchModel> calculateJDMatch(String resumeId, String jobDescription);
   Future<Map<String, dynamic>> autoTailorResume(String resumeId, String jobDescription);
-  Future<List<dynamic>> getMatchingJobs(String resumeId);
+  Future<List<dynamic>> getMatchingJobs(String resumeId, {String? location});
 }
 
 class ResumeRemoteDataSourceImpl implements ResumeRemoteDataSource {
@@ -164,9 +164,12 @@ class ResumeRemoteDataSourceImpl implements ResumeRemoteDataSource {
   }
 
   @override
-  Future<List<dynamic>> getMatchingJobs(String resumeId) async {
+  Future<List<dynamic>> getMatchingJobs(String resumeId, {String? location}) async {
     try {
-      final response = await apiClient.get('jobs/resume-matches/$resumeId/');
+      final locQuery = (location != null && location.trim().isNotEmpty)
+          ? '?location=${Uri.encodeComponent(location.trim())}'
+          : '';
+      final response = await apiClient.get('jobs/resume-matches/$resumeId/$locQuery');
       if (response.statusCode == 200 && response.data != null) {
         if (response.data is Map && response.data['data'] is List) {
           return response.data['data'];

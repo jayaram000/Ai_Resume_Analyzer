@@ -28,9 +28,22 @@ class PositionAnalysisSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class JDMatchAnalysisSerializer(serializers.ModelSerializer):
+    recommendations = serializers.SerializerMethodField()
+
     class Meta:
         model = JDMatchAnalysis
         fields = "__all__"
+
+    def get_recommendations(self, obj):
+        if isinstance(obj.ats_compatibility, dict):
+            recs = obj.ats_compatibility.get("recommendations", [])
+            if recs:
+                if isinstance(recs, list):
+                    return "\n• ".join(str(r) for r in recs)
+                return str(recs)
+        if obj.missing_skills:
+            return f"To increase your match score, consider highlighting experience with: {', '.join(obj.missing_skills[:4])}."
+        return "Strong overall profile match."
 
 class SkillGapAnalysisSerializer(serializers.ModelSerializer):
     match_score = serializers.SerializerMethodField()

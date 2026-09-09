@@ -47,11 +47,12 @@ class JobRecommendation(models.Model):
 class SelectedJob(models.Model):
     class StatusChoices(models.TextChoices):
         SAVED = 'SAVED', 'Saved'
-        NOT_APPLIED = 'NOT_APPLIED', 'Not Applied'
+        SHORTLISTED = 'SHORTLISTED', 'Shortlisted'
         APPLIED = 'APPLIED', 'Applied'
+        INTERVIEWING = 'INTERVIEWING', 'Interviewing'
         INTERVIEW_CALL_RECEIVED = 'INTERVIEW_CALL_RECEIVED', 'Interview Call Received'
-        REJECTED = 'REJECTED', 'Rejected'
         OFFER_RECEIVED = 'OFFER_RECEIVED', 'Offer Received'
+        REJECTED = 'REJECTED', 'Rejected'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="selected_jobs")

@@ -8,11 +8,9 @@ logger = logging.getLogger(__name__)
 
 # Verified active models supporting generateContent on standard Gemini API key
 MODELS_TO_TRY = [
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
     "gemini-flash-latest",
-    "gemini-3.5-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
-    "gemini-flash-lite-latest",
 ]
 
 
@@ -27,10 +25,10 @@ def generate_mock_response(prompt: str) -> dict:
     }
 
 
-def call_gemini_api(prompt: str, response_mime_type: str = "application/json", max_retries: int = 2) -> dict:
+def call_gemini_api(prompt: str, response_mime_type: str = "application/json", max_retries: int = 1) -> dict:
     """
     Direct HTTP Client to invoke Gemini API with active multi-model fallback.
-    Tries gemini-flash-latest, gemini-3.5-flash, gemini-3.5-flash-lite, etc.
+    Tries gemini-2.0-flash, gemini-1.5-flash, gemini-2.5-flash, etc.
     """
     api_key = getattr(settings, "GEMINI_API_KEY", None)
 
@@ -52,7 +50,7 @@ def call_gemini_api(prompt: str, response_mime_type: str = "application/json", m
         attempt = 0
         while attempt < max_retries:
             try:
-                response = requests.post(url, headers=headers, json=payload, timeout=45)
+                response = requests.post(url, headers=headers, json=payload, timeout=8)
 
                 if response.status_code == 200:
                     data = response.json()
@@ -67,7 +65,7 @@ def call_gemini_api(prompt: str, response_mime_type: str = "application/json", m
                             return json.loads(cleaned_text)
                         except Exception as parse_err:
                             import re
-                            json_match = re.search(r'\{.*\}', cleaned_text, re.DOTALL)
+                            json_match = re.search(r'(\[.*\]|\{.*\})', cleaned_text, re.DOTALL)
                             if json_match:
                                 try:
                                     return json.loads(json_match.group(0))

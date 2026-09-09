@@ -5,7 +5,7 @@ import 'package:frontend/core/widgets/circular_score_gauge.dart';
 import 'package:frontend/core/widgets/quick_action_card.dart';
 import 'package:frontend/features/dashboard/widgets/web_sidebar.dart';
 import 'package:frontend/features/resume/screens/ats_analysis_screen.dart';
-import 'package:frontend/features/jobs/screens/job_finder_screen.dart';
+import 'package:frontend/features/jobs/screens/selected_jobs_screen.dart';
 import 'package:frontend/features/skill_gap/screens/skill_gap_screen.dart';
 import 'package:frontend/features/roadmap/screens/roadmap_screen.dart';
 import 'package:frontend/features/settings/screens/settings_screen.dart';
@@ -927,7 +927,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 1:
         return const MyResumesScreen();
       case 2:
-        return const JobFinderScreen();
+        return const SelectedJobsScreen();
       case 3:
         return _buildAIToolsGridScreen(isDark);
       case 4:

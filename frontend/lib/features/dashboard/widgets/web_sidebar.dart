@@ -24,7 +24,7 @@ class WebSidebar extends StatelessWidget {
     final navItems = [
       {'icon': Icons.dashboard_rounded, 'label': 'Dashboard'},
       {'icon': Icons.description_rounded, 'label': 'Resumes'},
-      {'icon': Icons.work_history_rounded, 'label': 'Job Match'},
+      {'icon': Icons.view_kanban_rounded, 'label': 'Your Jobs'},
       {'icon': Icons.auto_awesome_rounded, 'label': 'AI Tools'},
       {'icon': Icons.smart_toy_rounded, 'label': 'Career Copilot'},
       {'icon': Icons.alt_route_rounded, 'label': 'Roadmap'},

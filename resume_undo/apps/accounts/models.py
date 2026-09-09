@@ -80,6 +80,11 @@ class UserProfile(models.Model):
         default=0
     )
 
+    preferences = models.JSONField(
+        default=dict,
+        blank=True
+    )
+
     verification_token = models.CharField(
         max_length=255,
         blank=True,
