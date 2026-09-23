@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:frontend/core/theme/app_colors.dart';
 
 class CircularScoreGauge extends StatefulWidget {
   final int score;
@@ -93,7 +94,7 @@ class _CircularScoreGaugeState extends State<CircularScoreGauge> with SingleTick
                         painter: _ScanningArcPainter(
                           strokeWidth: widget.strokeWidth,
                           trackColor: effectiveTrackColor,
-                          scanColor: const Color(0xFF6366F1),
+                          scanColor: AppColors.resolveCobalt(isDark),
                         ),
                       ),
                     );
@@ -138,8 +139,8 @@ class _CircularScoreGaugeState extends State<CircularScoreGauge> with SingleTick
                                     fontWeight: FontWeight.w800,
                                     height: 1.0,
                                     color: widget.score == 0
-                                        ? (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8))
-                                        : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                                        ? AppColors.resolveInkMuted(isDark)
+                                        : AppColors.resolveInk(isDark),
                                   ),
                                 ),
                                 Text(
@@ -147,7 +148,7 @@ class _CircularScoreGaugeState extends State<CircularScoreGauge> with SingleTick
                                   style: TextStyle(
                                     fontSize: widget.size * 0.13,
                                     fontWeight: FontWeight.w600,
-                                    color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                                    color: AppColors.resolveInkMuted(isDark),
                                   ),
                                 ),
                               ],
@@ -164,9 +165,9 @@ class _CircularScoreGaugeState extends State<CircularScoreGauge> with SingleTick
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.auto_awesome_rounded,
-                      color: Color(0xFF6366F1),
+                      color: AppColors.resolveCobalt(isDark),
                       size: 28,
                     ),
                     const SizedBox(height: 4),
@@ -175,7 +176,7 @@ class _CircularScoreGaugeState extends State<CircularScoreGauge> with SingleTick
                       style: TextStyle(
                         fontSize: widget.size * 0.11,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF6366F1),
+                        color: AppColors.resolveCobalt(isDark),
                       ),
                     ),
                   ],
@@ -187,21 +188,21 @@ class _CircularScoreGaugeState extends State<CircularScoreGauge> with SingleTick
         // Status Text & Label below the circle
         if (widget.isAnalyzing) ...[
           const SizedBox(height: 8),
-          const Row(
+          Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
                 width: 10,
                 height: 10,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1)),
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.resolveCobalt(isDark)),
               ),
-              SizedBox(width: 6),
+              const SizedBox(width: 6),
               Text(
                 "AI Analyzing...",
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF6366F1),
+                  color: AppColors.resolveCobalt(isDark),
                 ),
               ),
             ],
@@ -211,7 +212,7 @@ class _CircularScoreGaugeState extends State<CircularScoreGauge> with SingleTick
             "Extracting ATS metrics & skills",
             style: TextStyle(
               fontSize: 11,
-              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              color: AppColors.resolveInkMuted(isDark),
             ),
             textAlign: TextAlign.center,
           ),

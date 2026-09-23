@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/di/injection.dart';
+import 'package:frontend/core/theme/app_colors.dart';
 
 class ResumeComparisonScreen extends StatefulWidget {
   const ResumeComparisonScreen({super.key});
@@ -77,8 +78,18 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
         });
       }
     } catch (e) {
+      String msg = "Failed to perform comparison. Verify database record.";
+      try {
+        final dynamic err = e;
+        if (err?.response?.data != null) {
+          final data = err.response.data;
+          if (data is Map && data['message'] != null) {
+            msg = data['message'].toString();
+          }
+        }
+      } catch (_) {}
       setState(() {
-        _errorMessage = "Failed to perform comparison. Verify database record.";
+        _errorMessage = msg;
       });
     } finally {
       setState(() {
@@ -89,272 +100,342 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paper = AppColors.resolvePaper(isDark);
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final ink = AppColors.resolveInk(isDark);
+    final inkSoft = AppColors.resolveInkMuted(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final forest = AppColors.resolveForest(isDark);
+    final brick = AppColors.resolveBrick(isDark);
+    final ochre = AppColors.resolveOchre(isDark);
+
     return Scaffold(
+      backgroundColor: paper,
       appBar: AppBar(
-        title: const Text("Resume Version Intelligence", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF0F172A),
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+        title: Text(
+          "VERSION INTELLIGENCE // DIFF AUDIT",
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+            color: ink,
           ),
         ),
-        child: _isLoadingResumes
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
-            : Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Selection Header
-                    Card(
-                      color: const Color(0xCC1E293B),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Column(
+        backgroundColor: paperAlt,
+        elevation: 0,
+        shape: Border(bottom: BorderSide(color: rule)),
+        iconTheme: IconThemeData(color: ink),
+      ),
+      body: _isLoadingResumes
+          ? Center(child: CircularProgressIndicator(color: cobalt))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Selection Header
+                  Container(
+                    decoration: BoxDecoration(
+                      color: paperAlt,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: rule),
+                    ),
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            const Text(
-                              "Select Resume Versions to Compare",
-                              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                            Icon(Icons.compare_arrows_rounded, size: 18, color: cobalt),
+                            const SizedBox(width: 8),
+                            Text(
+                              "SELECT RESUME DOSSIERS FOR COMPARATIVE AUDIT",
+                              style: TextStyle(
+                                color: ink,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
                             ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: DropdownButtonFormField<String>(
-                                    value: _selectedResumeId1,
-                                    dropdownColor: const Color(0xFF1E293B),
-                                    decoration: const InputDecoration(labelText: "Old version"),
-                                    items: _resumes.map<DropdownMenuItem<String>>((res) {
-                                      return DropdownMenuItem<String>(
-                                        value: res['id'],
-                                        child: Text("${res['title']} (v${res['version']})", overflow: TextOverflow.ellipsis),
-                                      );
-                                    }).toList(),
-                                    onChanged: (val) => setState(() { _selectedResumeId1 = val; }),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: DropdownButtonFormField<String>(
-                                    value: _selectedResumeId2,
-                                    dropdownColor: const Color(0xFF1E293B),
-                                    decoration: const InputDecoration(labelText: "New version"),
-                                    items: _resumes.map<DropdownMenuItem<String>>((res) {
-                                      return DropdownMenuItem<String>(
-                                        value: res['id'],
-                                        child: Text("${res['title']} (v${res['version']})", overflow: TextOverflow.ellipsis),
-                                      );
-                                    }).toList(),
-                                    onChanged: (val) => setState(() { _selectedResumeId2 = val; }),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            _isComparing
-                                ? const CircularProgressIndicator(color: Color(0xFF14B8A6))
-                                : ElevatedButton.icon(
-                                    onPressed: _selectedResumeId1 != null && _selectedResumeId2 != null ? _compareResumes : null,
-                                    icon: const Icon(Icons.analytics_rounded),
-                                    label: const Text("Compare Versions"),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF14B8A6),
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                    ),
-                                  ),
                           ],
                         ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedResumeId1,
+                                dropdownColor: paperAlt,
+                                style: TextStyle(color: ink, fontSize: 13),
+                                decoration: InputDecoration(
+                                  labelText: "ORIGINAL / BASE VERSION",
+                                  labelStyle: TextStyle(color: inkSoft, fontSize: 11),
+                                ),
+                                items: _resumes.map<DropdownMenuItem<String>>((res) {
+                                  return DropdownMenuItem<String>(
+                                    value: res['id'].toString(),
+                                    child: Text(
+                                      "${res['title']} (v${res['version']})",
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(color: ink),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (val) => setState(() { _selectedResumeId1 = val; }),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedResumeId2,
+                                dropdownColor: paperAlt,
+                                style: TextStyle(color: ink, fontSize: 13),
+                                decoration: InputDecoration(
+                                  labelText: "REVISED / TARGET VERSION",
+                                  labelStyle: TextStyle(color: inkSoft, fontSize: 11),
+                                ),
+                                items: _resumes.map<DropdownMenuItem<String>>((res) {
+                                  return DropdownMenuItem<String>(
+                                    value: res['id'].toString(),
+                                    child: Text(
+                                      "${res['title']} (v${res['version']})",
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(color: ink),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (val) => setState(() { _selectedResumeId2 = val; }),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        _isComparing
+                            ? Center(child: CircularProgressIndicator(color: cobalt))
+                            : SizedBox(
+                                width: double.infinity,
+                                height: 42,
+                                child: ElevatedButton.icon(
+                                  onPressed: _selectedResumeId1 != null && _selectedResumeId2 != null ? _compareResumes : null,
+                                  icon: const Icon(Icons.analytics_outlined, size: 18),
+                                  label: const Text(
+                                    "EXECUTE COMPARISON AUDIT",
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: cobalt,
+                                    foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                  ),
+                                ),
+                              ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Error block
+                  if (_errorMessage != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 20.0),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: brick.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: brick.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(_errorMessage!, style: TextStyle(color: brick, fontSize: 13)),
+                    ),
+
+                  // Results block
+                  if (_comparisonData != null) ...[
+                    // Score Compare Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildScoreDisplayCard("ATS SCORE (BEFORE)", _comparisonData!['before_resume']['analysis_snapshot']['ats_score'], brick, paperAlt, rule, inkSoft),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildScoreDisplayCard("ATS SCORE (AFTER)", _comparisonData!['after_resume']['analysis_snapshot']['ats_score'], forest, paperAlt, rule, inkSoft),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildScoreDisplayCard("HEALTH (BEFORE)", _comparisonData!['before_resume']['analysis_snapshot']['health_score'], ochre, paperAlt, rule, inkSoft),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildScoreDisplayCard("HEALTH (AFTER)", _comparisonData!['after_resume']['analysis_snapshot']['health_score'], cobalt, paperAlt, rule, inkSoft),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Score delta block
+                    Container(
+                      decoration: BoxDecoration(
+                        color: paperAlt,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: rule),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "ATS SCORE PROGRESSION DELTA",
+                            style: TextStyle(color: inkSoft, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                          ),
+                          Text(
+                            "${_comparisonData!['ats_difference'] >= 0 ? '+' : ''}${_comparisonData!['ats_difference']} PTS",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: _comparisonData!['ats_difference'] >= 0 ? forest : brick,
+                            ),
+                          )
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    
-                    // Error block
-                    if (_errorMessage != null)
-                      Center(
-                        child: Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent)),
-                      ),
+                    const SizedBox(height: 20),
 
-                    // Results block
-                    if (_comparisonData != null)
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Score Compare Card
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildScoreDisplayCard("ATS Before", _comparisonData!['before_resume']['analysis_snapshot']['ats_score'], const Color(0xFFEF4444)),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: _buildScoreDisplayCard("ATS After", _comparisonData!['after_resume']['analysis_snapshot']['ats_score'], const Color(0xFF14B8A6)),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildScoreDisplayCard("Health Before", _comparisonData!['before_resume']['analysis_snapshot']['health_score'], const Color(0xFFF59E0B)),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: _buildScoreDisplayCard("Health After", _comparisonData!['after_resume']['analysis_snapshot']['health_score'], const Color(0xFF3B82F6)),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 20),
-                              
-                              // Score delta block
-                              Card(
-                                color: const Color(0xFF1E293B),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text("ATS Score Progression Delta:", style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
-                                      Text(
-                                        "${_comparisonData!['ats_difference'] >= 0 ? '+' : ''}${_comparisonData!['ats_difference']} pts",
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: _comparisonData!['ats_difference'] >= 0 ? const Color(0xFF14B8A6) : Colors.redAccent,
-                                        ),
-                                      )
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              
-                              // Added & Removed Skills
-                              const Text("Skill Changes", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 12),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: _buildSkillsProgressCard("Added Skills", _comparisonData!['added_skills'], const Color(0xFF14B8A6)),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: _buildSkillsProgressCard("Removed Skills", _comparisonData!['removed_skills'], const Color(0xFFEF4444)),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 24),
-
-                              // Added & Removed Keywords
-                              const Text("Keyword Additions", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 12),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: _buildSkillsProgressCard("Added Keywords", _comparisonData!['added_keywords'], const Color(0xFF3B82F6)),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: _buildSkillsProgressCard("Removed Keywords", _comparisonData!['removed_keywords'], const Color(0xFFF59E0B)),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 24),
-                              
-                              // Visual Summary
-                              const Text("AI Summary of Changes", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 12),
-                              Card(
-                                color: const Color(0x661E293B),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(20.0),
-                                  child: Text(
-                                    _comparisonData!['ai_summary'] ?? "No summary provided.",
-                                    style: const TextStyle(color: Color(0xFFE2E8F0), height: 1.5, fontSize: 13),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                    // Added & Removed Skills
+                    Text("SKILL DELTAS", style: TextStyle(color: inkSoft, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _buildSkillsProgressCard("ADDED SKILLS", _comparisonData!['added_skills'], forest, paperAlt, rule, inkSoft),
                         ),
-                      )
-                    else if (!_isComparing)
-                      const Expanded(
-                        child: Center(
-                          child: Text(
-                            "Select two versions and click Compare to see score changes and skill tracking.",
-                            style: TextStyle(color: Color(0xFF94A3B8)),
-                            textAlign: TextAlign.center,
-                          ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildSkillsProgressCard("REMOVED SKILLS", _comparisonData!['removed_skills'], brick, paperAlt, rule, inkSoft),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Added & Removed Keywords
+                    Text("KEYWORD DELTAS", style: TextStyle(color: inkSoft, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _buildSkillsProgressCard("ADDED KEYWORDS", _comparisonData!['added_keywords'], cobalt, paperAlt, rule, inkSoft),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildSkillsProgressCard("REMOVED KEYWORDS", _comparisonData!['removed_keywords'], ochre, paperAlt, rule, inkSoft),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Visual Summary
+                    Text("AI ANALYSIS & PROGRESSION AUDIT", style: TextStyle(color: inkSoft, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: paperAlt,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: rule),
+                      ),
+                      padding: const EdgeInsets.all(18.0),
+                      child: Text(
+                        _comparisonData!['ai_summary'] ?? "No summary provided.",
+                        style: TextStyle(color: ink, height: 1.5, fontSize: 13),
+                      ),
+                    ),
+                  ] else if (!_isComparing)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(40),
+                      decoration: BoxDecoration(
+                        color: paperAlt,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: rule),
+                      ),
+                      child: Center(
+                        child: Text(
+                          "Select two versions and execute comparison to audit score diffs and keyword adjustments.",
+                          style: TextStyle(color: inkSoft, fontSize: 13),
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-      ),
-    );
-  }
-
-  Widget _buildScoreDisplayCard(String title, int score, Color scoreColor) {
-    return Card(
-      color: const Color(0xFF1E293B),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            Text(title, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
-            const SizedBox(height: 12),
-            Text(
-              "$score",
-              style: TextStyle(color: scoreColor, fontSize: 32, fontWeight: FontWeight.bold),
             ),
-          ],
-        ),
+    );
+  }
+
+  Widget _buildScoreDisplayCard(String title, dynamic score, Color scoreColor, Color cardBg, Color rule, Color textMuted) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: rule),
+      ),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: TextStyle(color: textMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+          const SizedBox(height: 8),
+          Text(
+            "$score",
+            style: TextStyle(color: scoreColor, fontSize: 28, fontWeight: FontWeight.w800),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSkillsProgressCard(String title, List<dynamic> skills, Color badgeColor) {
-    return Card(
-      color: const Color(0xFF1E293B),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 13)),
-            const SizedBox(height: 12),
-            if (skills.isEmpty)
-              const Text("None", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12))
-            else
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: skills.map<Widget>((s) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: badgeColor.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: badgeColor.withOpacity(0.3), width: 1),
-                    ),
-                    child: Text(
-                      s.toString(),
-                      style: TextStyle(color: badgeColor, fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
-                  );
-                }).toList(),
-              )
-          ],
-        ),
+  Widget _buildSkillsProgressCard(String title, List<dynamic> skills, Color badgeColor, Color cardBg, Color rule, Color textMuted) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: rule),
+      ),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: TextStyle(color: textMuted, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 0.5)),
+          const SizedBox(height: 12),
+          if (skills.isEmpty)
+            Text("None recorded", style: TextStyle(color: textMuted, fontSize: 12))
+          else
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: skills.map<Widget>((s) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: badgeColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: badgeColor.withValues(alpha: 0.3), width: 1),
+                  ),
+                  child: Text(
+                    s.toString(),
+                    style: TextStyle(color: badgeColor, fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                );
+              }).toList(),
+            )
+        ],
       ),
     );
   }

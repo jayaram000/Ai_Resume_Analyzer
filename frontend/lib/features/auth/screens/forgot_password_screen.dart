@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/di/injection.dart';
+import 'package:frontend/core/theme/app_colors.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -52,18 +53,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final paper = AppColors.resolvePaper(isDark);
+    final cardBg = AppColors.resolvePaperAlt(isDark);
+    final borderColor = AppColors.resolveRule(isDark);
+    final textPrimary = AppColors.resolveInk(isDark);
+    final textSecondary = AppColors.resolveInkMuted(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      backgroundColor: paper,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textPrimary),
+          icon: Icon(Icons.arrow_back, color: textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -72,63 +75,71 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           padding: const EdgeInsets.all(24.0),
           child: Container(
             constraints: const BoxConstraints(maxWidth: 440),
-            padding: const EdgeInsets.all(36.0),
+            padding: const EdgeInsets.all(32.0),
             decoration: BoxDecoration(
               color: cardBg,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(4),
               border: Border.all(color: borderColor),
-              boxShadow: [
-                if (!isDark)
-                  BoxShadow(
-                    color: const Color(0xFF6366F1).withOpacity(0.08),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  )
-              ],
             ),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: cobalt.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: cobalt.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.lock_reset_outlined, size: 14, color: cobalt),
+                          const SizedBox(width: 6),
+                          Text(
+                            "DOSSIER ACCESS // RECOVERY",
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                              color: cobalt,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: const Icon(
-                      Icons.lock_reset_rounded,
-                      size: 36,
-                      color: Colors.white,
-                    ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Text(
                     "Reset Password",
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: textPrimary,
+                      letterSpacing: -0.3,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "Enter your email to request password reset link",
-                    textAlign: TextAlign.center,
+                    "Enter your verified account email to dispatch a recovery link.",
                     style: TextStyle(fontSize: 13, color: textSecondary),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     style: TextStyle(color: textPrimary),
                     decoration: InputDecoration(
-                      hintText: "Email address",
-                      hintStyle: TextStyle(color: textSecondary),
-                      prefixIcon: Icon(Icons.email_outlined, color: textSecondary),
+                      labelText: "EMAIL ADDRESS",
+                      labelStyle: TextStyle(color: textSecondary, fontSize: 11, letterSpacing: 0.5),
+                      hintText: "user@domain.com",
+                      hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
+                      prefixIcon: Icon(Icons.email_outlined, color: textSecondary, size: 18),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty || !value.contains('@')) {
@@ -137,41 +148,57 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   if (_errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16.0),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.resolveBrick(isDark).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: AppColors.resolveBrick(isDark).withValues(alpha: 0.3)),
+                      ),
                       child: Text(
                         _errorMessage!,
-                        style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                        style: TextStyle(color: AppColors.resolveBrick(isDark), fontSize: 12),
                         textAlign: TextAlign.center,
                       ),
                     ),
                   if (_successMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16.0),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.resolveForest(isDark).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: AppColors.resolveForest(isDark).withValues(alpha: 0.3)),
+                      ),
                       child: Text(
                         _successMessage!,
-                        style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: AppColors.resolveForest(isDark), fontSize: 12, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
                     ),
                   _isLoading
-                      ? const CircularProgressIndicator(color: Color(0xFF6366F1))
+                      ? Center(child: CircularProgressIndicator(color: cobalt))
                       : SizedBox(
                           width: double.infinity,
-                          height: 48,
+                          height: 44,
                           child: ElevatedButton(
                             onPressed: _resetPassword,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF6366F1),
-                              foregroundColor: Colors.white,
+                              backgroundColor: cobalt,
+                              foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
                               elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                             ),
                             child: const Text(
-                              "Send Reset Link",
-                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                              "DISPATCH RESET LINK",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
                         ),

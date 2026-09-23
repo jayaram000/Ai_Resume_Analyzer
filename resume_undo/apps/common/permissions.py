@@ -9,8 +9,8 @@ class IsPremiumUser(BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
         
-        # Development / Debug mode or Admins/Staff bypass premium restriction
-        if getattr(settings, "DEBUG", False) or getattr(request.user, 'role', 'USER') == 'ADMIN' or request.user.is_staff:
+        # Admins/Staff/Superusers bypass premium restriction
+        if getattr(request.user, 'role', 'USER') == 'ADMIN' or request.user.is_staff or request.user.is_superuser:
             return True
 
         # Avoid circular imports by importing inside the method
@@ -22,6 +22,6 @@ class IsPremiumUser(BasePermission):
             status='active',
             start_date__lte=now,
             end_date__gte=now
-        ).exists()
+        ).exclude(plan__price=0).exists()
 
         return active_sub

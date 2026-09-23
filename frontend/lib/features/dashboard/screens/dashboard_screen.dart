@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/di/injection.dart';
-import 'package:frontend/core/widgets/circular_score_gauge.dart';
+import 'package:frontend/core/widgets/score_stamp.dart';
+import 'package:frontend/core/widgets/pipeline_funnel_bar.dart';
 import 'package:frontend/core/widgets/quick_action_card.dart';
+import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_theme.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/features/dashboard/widgets/web_sidebar.dart';
 import 'package:frontend/features/resume/screens/ats_analysis_screen.dart';
 import 'package:frontend/features/jobs/screens/selected_jobs_screen.dart';
@@ -15,6 +19,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:frontend/features/auth/bloc/auth_bloc.dart';
 import 'package:frontend/features/auth/bloc/auth_event.dart';
+import 'package:frontend/core/widgets/premium_plan_paywall.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String email;
@@ -30,6 +35,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
   bool _isLoading = true;
   bool _isAnalyzingResume = false;
+  bool _isPremium = false;
   String? _errorMessage;
 
   Map<String, dynamic> _stats = {};
@@ -40,6 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _isPremium = (widget.userData['is_premium'] == true) || (widget.userData['is_staff'] == true);
     _loadDashboardData();
   }
 
@@ -54,6 +61,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final scoreRes = await sl<ApiClient>().get('dashboard/career-score/');
       final resumesRes = await sl<ApiClient>().get('resumes/');
       final jobStatsRes = await sl<ApiClient>().get('jobs/stats/');
+
+      try {
+        final subRes = await sl<ApiClient>().get('subscriptions/active/');
+        if (subRes.statusCode == 200 && subRes.data is Map) {
+          final subData = subRes.data['data'];
+          if (subData != null && subData is Map && subData['status'] == 'active') {
+            _isPremium = true;
+          } else if (subData == null && !(widget.userData['is_staff'] == true || widget.userData['is_superuser'] == true)) {
+            _isPremium = false;
+          }
+        }
+      } catch (_) {}
 
       setState(() {
         if (statsRes.statusCode == 200 && statsRes.data['success'] == true) {
@@ -156,57 +175,163 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return name[0].toUpperCase() + name.substring(1);
   }
 
+  void _confirmLogout(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.resolvePaperAlt(isDark),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: AppColors.resolveRule(isDark)),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.logout_rounded, color: AppColors.resolveBrick(isDark), size: 20),
+            const SizedBox(width: 8),
+            Text(
+              "CONFIRM SIGN OUT",
+              style: TextStyle(
+                color: AppColors.resolveInk(isDark),
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          "Are you sure you want to sign out of your account? You will be redirected to the login screen.",
+          style: TextStyle(color: AppColors.resolveInkMuted(isDark), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.resolveInkMuted(isDark),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              context.read<AuthBloc>().add(LogoutRequested());
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.resolveBrick(isDark),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: const Text("Sign Out", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDashboardMainContent(bool isDark) {
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final ink = AppColors.resolveInk(isDark);
+    final inkSoft = AppColors.resolveInkSoft(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final forest = AppColors.resolveForest(isDark);
+    final brick = AppColors.resolveBrick(isDark);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Bar
           Row(
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Dashboard',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: textPrimary,
+                    'Casefile Dossier',
+                    style: AppTypography.displayHero(
+                      color: ink,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Welcome back, ${_getFirstName()} 👋',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                    'Working File: ${_getFirstName()} • Active Review',
+                    style: AppTypography.monoLabel(
+                      color: inkSoft,
+                      fontSize: 12,
                     ),
                   ),
                 ],
               ),
               const Spacer(),
+              // Light / Dark Theme Toggle per mockup spec
+              ValueListenableBuilder<ThemeMode>(
+                valueListenable: ThemeController.themeModeNotifier,
+                builder: (context, currentMode, _) {
+                  final isNight = currentMode == ThemeMode.dark;
+                  return OutlinedButton.icon(
+                    onPressed: ThemeController.toggleTheme,
+                    icon: Icon(
+                      isNight ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                      size: 15,
+                      color: cobalt,
+                    ),
+                    label: Text(
+                      isNight ? "Day desk" : "Night desk",
+                      style: AppTypography.buttonText(color: cobalt, fontSize: 12),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: cobalt,
+                      side: BorderSide(color: rule, width: 1.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
               ElevatedButton.icon(
                 onPressed: _uploadResume,
-                icon: const Icon(Icons.upload_file_rounded, size: 18),
-                label: const Text('Upload New Resume'),
+                icon: const Icon(Icons.upload_file_rounded, size: 16),
+                label: Text(
+                  'Add Document',
+                  style: AppTypography.buttonText(color: Colors.white, fontSize: 12.5),
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),
+                  backgroundColor: cobalt,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(4),
                   ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              IconButton(
+                tooltip: "Close Dossier",
+                onPressed: () => _confirmLogout(context),
+                icon: Icon(Icons.logout_rounded, color: brick, size: 18),
+                style: IconButton.styleFrom(
+                  backgroundColor: brick.withValues(alpha: 0.08),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    side: BorderSide(color: brick.withValues(alpha: 0.3), width: 1),
+                  ),
+                  padding: const EdgeInsets.all(10),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 24),
+
+          // Hero Score Cards with ScoreStamp
           LayoutBuilder(
             builder: (context, constraints) {
               final isWide = constraints.maxWidth >= 800;
@@ -233,110 +358,116 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 spacing: 16,
                 runSpacing: 16,
                 children: [
+                  // 1. ATS Score Stamp Card
                   Container(
                     width: cardWidth,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: borderColor),
+                      color: paperAlt,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: rule, width: 1.0),
                     ),
                     child: Column(
                       children: [
                         Text(
-                          'Your ATS Score',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textPrimary),
+                          'ATS AUDIT SCORE',
+                          style: AppTypography.monoLabel(
+                            color: inkSoft,
+                            fontSize: 11,
+                          ).copyWith(letterSpacing: 0.6),
                         ),
-                        const SizedBox(height: 16),
-                        CircularScoreGauge(
+                        const SizedBox(height: 14),
+                        ScoreStamp(
                           score: atsScore,
-                          size: 130,
-                          strokeWidth: 12,
+                          label: atsScore > 0 ? "ats approved" : "pending file",
+                          size: 112,
                           isAnalyzing: _isAnalyzingResume,
-                          progressColor: atsScore >= 80
-                              ? const Color(0xFF22C55E)
-                              : (atsScore >= 50 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444)),
-                          statusText: atsScore > 0 ? (atsScore >= 80 ? 'Great Score!' : 'Good Match') : 'No Resume',
-                          statusTextColor: atsScore > 0 ? const Color(0xFF22C55E) : const Color(0xFF94A3B8),
-                          label: atsScore > 0 ? "Top percentile format." : "Upload resume to score.",
+                          subtitle: atsScore > 0 ? "Top percentile format." : "Upload file to review.",
                         ),
                       ],
                     ),
                   ),
+
+                  // 2. Job Target Fit Stamp Card
                   Container(
                     width: cardWidth,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: borderColor),
+                      color: paperAlt,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: rule, width: 1.0),
                     ),
                     child: Column(
                       children: [
                         Text(
-                          'Job Match Score',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textPrimary),
+                          'TARGET FIT INDEX',
+                          style: AppTypography.monoLabel(
+                            color: inkSoft,
+                            fontSize: 11,
+                          ).copyWith(letterSpacing: 0.6),
                         ),
-                        const SizedBox(height: 16),
-                        CircularScoreGauge(
+                        const SizedBox(height: 14),
+                        ScoreStamp(
                           score: jobMatchScore,
-                          size: 130,
-                          strokeWidth: 12,
+                          label: jobMatchScore > 0 ? "role match" : "unlinked jd",
+                          size: 112,
                           isAnalyzing: _isAnalyzingResume,
-                          progressColor: const Color(0xFF22C55E),
-                          statusText: jobMatchScore > 0 ? 'Target Fit' : 'No Target JD',
-                          statusTextColor: jobMatchScore > 0 ? const Color(0xFF22C55E) : const Color(0xFF94A3B8),
-                          label: jobMatchScore > 0 ? 'Match against JD.' : 'Paste JD to score fit.',
+                          subtitle: jobMatchScore > 0 ? "Direct keyword overlap." : "Paste JD to score fit.",
                         ),
                       ],
                     ),
                   ),
+
+                  // 3. Top Strengths Audit Card
                   Container(
                     width: cardWidth,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: borderColor),
+                      color: paperAlt,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: rule, width: 1.0),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Top Strengths',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textPrimary),
+                          'RECORD HIGHLIGHTS',
+                          style: AppTypography.monoLabel(
+                            color: inkSoft,
+                            fontSize: 11,
+                          ).copyWith(letterSpacing: 0.6),
                         ),
                         const SizedBox(height: 12),
                         if (_resumes.isEmpty)
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12.0),
                             child: Text(
-                              'No resume analysis available yet. Upload a resume to automatically extract your top strengths and metrics.',
-                              style: TextStyle(
+                              'No dossier loaded yet. Upload a resume file to automatically extract audit credentials and verified skills.',
+                              style: AppTypography.bodyRegular(
+                                color: inkSoft,
                                 fontSize: 12,
-                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                                height: 1.5,
+                                height: 1.45,
                               ),
                             ),
                           )
                         else
                           ...[
-                            'Relevant Technical Skills',
-                            'Verified Experience',
-                            'Structured Education',
-                            'Clean Standard Formatting',
-                            'Quantified Achievements'
+                            'Relevant Technical Core',
+                            'Verified Experience History',
+                            'Standard Clear Formatting',
+                            'Quantified Impact Metrics',
+                            'Key Industry Terminology'
                           ].map((strength) => Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                padding: const EdgeInsets.symmetric(vertical: 3.5),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.check_circle_rounded, color: Color(0xFF22C55E), size: 16),
+                                    Icon(Icons.check, color: forest, size: 14),
                                     const SizedBox(width: 8),
                                     Text(
                                       strength,
-                                      style: TextStyle(
+                                      style: AppTypography.bodyRegular(
+                                        color: ink,
                                         fontSize: 12,
-                                        color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155),
                                       ),
                                     ),
                                   ],
@@ -362,12 +493,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               }
                             },
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF6366F1),
-                              side: const BorderSide(color: Color(0xFF6366F1)),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              foregroundColor: cobalt,
+                              side: BorderSide(color: rule, width: 1),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                               padding: const EdgeInsets.symmetric(vertical: 8),
                             ),
-                            child: Text(_resumes.isNotEmpty ? 'View Full Analysis' : 'Upload Resume', style: const TextStyle(fontSize: 12)),
+                            child: Text(
+                              _resumes.isNotEmpty ? 'Inspect Full Dossier' : 'Upload File',
+                              style: AppTypography.buttonText(color: cobalt, fontSize: 11.5),
+                            ),
                           ),
                         ),
                       ],
@@ -377,6 +511,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               );
             },
           ),
+          const SizedBox(height: 20),
+
+          // Pipeline Funnel Bar Widget (Consuming ApplicationTrackerService metrics)
+          PipelineFunnelBar(
+            funnelData: _jobStats['funnel'] as Map<String, dynamic>?,
+            fallbackCounts: _jobStats,
+            title: "Application Pipeline Funnel",
+          ),
+          const SizedBox(height: 20),
           const SizedBox(height: 24),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -385,24 +528,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ? Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _buildRecentResumesCard(cardBg, borderColor, textPrimary, isDark)),
+                        Expanded(child: _buildRecentResumesCard(paperAlt, rule, ink, isDark)),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildQuickActionsGrid(cardBg, borderColor, textPrimary, isDark)),
+                        Expanded(child: _buildQuickActionsGrid(paperAlt, rule, ink, isDark)),
                       ],
                     )
                   : Column(
                       children: [
-                        _buildRecentResumesCard(cardBg, borderColor, textPrimary, isDark),
+                        _buildRecentResumesCard(paperAlt, rule, ink, isDark),
                         const SizedBox(height: 16),
-                        _buildQuickActionsGrid(cardBg, borderColor, textPrimary, isDark),
+                        _buildQuickActionsGrid(paperAlt, rule, ink, isDark),
                       ],
                     );
             },
           ),
           const SizedBox(height: 24),
           Text(
-            'AI Tools & Feature Hub',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+            'FIELD OPERATIONS & MODULES',
+            style: AppTypography.monoLabel(color: inkSoft, fontSize: 11).copyWith(letterSpacing: 0.6),
           ),
           const SizedBox(height: 12),
           SingleChildScrollView(
@@ -414,8 +557,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   description: 'Get AI-powered suggestions to improve your resume score.',
                   buttonText: 'Optimize Now',
                   icon: Icons.tune_rounded,
-                  iconBgColor: const Color(0xFF22C55E),
-                  buttonColor: const Color(0xFF22C55E),
+                  iconBgColor: AppColors.resolveForest(isDark),
+                  buttonColor: AppColors.resolveForest(isDark),
                   onTap: () {
                     if (_resumes.isNotEmpty) {
                       Navigator.push(
@@ -439,8 +582,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   description: 'Turn weak bullets into strong achievement statements.',
                   buttonText: 'Rewrite Bullets',
                   icon: Icons.edit_note_rounded,
-                  iconBgColor: const Color(0xFF8B5CF6),
-                  buttonColor: const Color(0xFF8B5CF6),
+                  iconBgColor: AppColors.resolveOchre(isDark),
+                  buttonColor: AppColors.resolveOchre(isDark),
                   onTap: () {
                     if (_resumes.isNotEmpty) {
                       Navigator.push(
@@ -464,8 +607,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   description: 'Get a personalized roadmap to achieve your target career goals.',
                   buttonText: 'View Roadmap',
                   icon: Icons.alt_route_rounded,
-                  iconBgColor: const Color(0xFF14B8A6),
-                  buttonColor: const Color(0xFF14B8A6),
+                  iconBgColor: AppColors.resolveCobalt(isDark),
+                  buttonColor: AppColors.resolveCobalt(isDark),
                   onTap: () => setState(() => _selectedIndex = 5),
                 ),
                 const SizedBox(width: 12),
@@ -474,8 +617,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   description: 'Analyze missing skills and find recommended courses.',
                   buttonText: 'Analyze Skills',
                   icon: Icons.smart_toy_rounded,
-                  iconBgColor: const Color(0xFF3B82F6),
-                  buttonColor: const Color(0xFF3B82F6),
+                  iconBgColor: AppColors.resolveForest(isDark),
+                  buttonColor: AppColors.resolveForest(isDark),
                   onTap: () => setState(() => _selectedIndex = 4),
                 ),
                 const SizedBox(width: 12),
@@ -484,8 +627,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   description: 'Paste a target job description to measure fit score.',
                   buttonText: 'Match JD',
                   icon: Icons.document_scanner_rounded,
-                  iconBgColor: const Color(0xFF6366F1),
-                  buttonColor: const Color(0xFF6366F1),
+                  iconBgColor: AppColors.resolveCobalt(isDark),
+                  buttonColor: AppColors.resolveCobalt(isDark),
                   onTap: () {
                     if (_resumes.isNotEmpty) {
                       Navigator.push(
@@ -513,13 +656,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildRecentResumesCard(Color cardBg, Color borderColor, Color textPrimary, bool isDark) {
     final recentList = _resumes.take(3).toList();
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final ink = AppColors.resolveInk(isDark);
+    final inkSoft = AppColors.resolveInkSoft(isDark);
+    final paper = AppColors.resolvePaper(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final forest = AppColors.resolveForest(isDark);
+    final ochre = AppColors.resolveOchre(isDark);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: borderColor, width: 1.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -528,24 +678,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Recent Resumes',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+                'ACTIVE DOSSIERS',
+                style: AppTypography.monoLabel(
+                  color: inkSoft,
+                  fontSize: 11,
+                ).copyWith(letterSpacing: 0.6),
               ),
               TextButton(
                 onPressed: () => setState(() => _selectedIndex = 1),
-                child: const Text('View All', style: TextStyle(fontSize: 12, color: Color(0xFF6366F1))),
+                child: Text('View Archive', style: AppTypography.buttonText(color: cobalt, fontSize: 11.5)),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           if (recentList.isEmpty)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 24),
               width: double.infinity,
-              child: const Center(
+              child: Center(
                 child: Text(
-                  'No resumes uploaded yet. Click Upload to get started.',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                  'No resume documents uploaded yet. Upload a file to generate dossier metrics.',
+                  style: AppTypography.bodyRegular(color: inkSoft, fontSize: 12),
+                  textAlign: TextAlign.center,
                 ),
               ),
             )
@@ -554,6 +708,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final title = item['title'] ?? item['original_filename'] ?? "Resume";
               final idStr = item['id'].toString();
               final score = (item['ats_score'] as num?)?.toInt() ?? 80;
+              final scoreColor = score >= 70 ? forest : (score >= 50 ? ochre : AppColors.resolveBrick(isDark));
 
               return InkWell(
                 onTap: () {
@@ -567,24 +722,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   );
                 },
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(4),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                    color: paper,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: rule, width: 1.0),
                   ),
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(7),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1).withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(8),
+                          color: cobalt.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(3),
                         ),
-                        child: const Icon(Icons.description_rounded, color: Color(0xFF6366F1), size: 18),
+                        child: Icon(Icons.description_outlined, color: cobalt, size: 16),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -593,18 +748,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: [
                             Text(
                               title,
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: textPrimary),
+                              style: AppTypography.bodyMedium(color: ink, fontSize: 13),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               "ATS Score: $score / 100",
-                              style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
+                              style: AppTypography.monoLabel(color: scoreColor, fontSize: 11),
                             ),
                           ],
                         ),
                       ),
-                      const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 18),
+                      Icon(Icons.chevron_right_rounded, color: inkSoft, size: 16),
                     ],
                   ),
                 ),
@@ -616,27 +771,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildQuickActionsGrid(Color cardBg, Color borderColor, Color textPrimary, bool isDark) {
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final forest = AppColors.resolveForest(isDark);
+    final ochre = AppColors.resolveOchre(isDark);
+    final inkSoft = AppColors.resolveInkSoft(isDark);
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: borderColor, width: 1.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Quick Actions',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+            'FIELD OPERATIONS',
+            style: AppTypography.monoLabel(
+              color: inkSoft,
+              fontSize: 11,
+            ).copyWith(letterSpacing: 0.6),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Column(
             children: [
               Row(
                 children: [
                   Expanded(
-                    child: _buildActionTile(Icons.tune_rounded, 'Optimize Resume', const Color(0xFF6366F1), () {
+                    child: _buildActionTile(Icons.tune_rounded, 'Audit Resume', cobalt, () {
                       if (_resumes.isNotEmpty) {
                         Navigator.push(
                           context,
@@ -654,7 +817,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildActionTile(Icons.document_scanner_rounded, 'Scan JD', const Color(0xFF14B8A6), () {
+                    child: _buildActionTile(Icons.document_scanner_rounded, 'Match JD', forest, () {
                       if (_resumes.isNotEmpty) {
                         Navigator.push(
                           context,
@@ -677,13 +840,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildActionTile(Icons.alt_route_rounded, 'Career Roadmap', const Color(0xFF8B5CF6), () {
+                    child: _buildActionTile(Icons.alt_route_rounded, 'Transition Roadmap', cobalt, () {
                       setState(() => _selectedIndex = 5);
                     }),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildActionTile(Icons.smart_toy_rounded, 'Skill Gap & Courses', const Color(0xFFF59E0B), () {
+                    child: _buildActionTile(Icons.smart_toy_rounded, 'Skill Gap Analysis', ochre, () {
                       setState(() => _selectedIndex = 4);
                     }),
                   ),
@@ -698,32 +861,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildActionTile(IconData icon, String label, Color color, VoidCallback onTap) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paper = AppColors.resolvePaper(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final ink = AppColors.resolveInk(isDark);
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(4),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+          color: paper,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: rule, width: 1.0),
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(3),
               ),
-              child: Icon(icon, color: color, size: 18),
+              child: Icon(icon, color: color, size: 16),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                style: AppTypography.bodyRegular(color: ink, fontSize: 12.5)
+                    .copyWith(fontWeight: FontWeight.w600),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -735,17 +902,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildAIToolsGridScreen(bool isDark) {
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final ink = AppColors.resolveInk(isDark);
+    final inkSoft = AppColors.resolveInkSoft(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final forest = AppColors.resolveForest(isDark);
+    final ochre = AppColors.resolveOchre(isDark);
 
     final aiTools = [
       {
         'title': 'AI Resume Optimizer',
         'desc': 'Deep ATS critique and actionable suggestions to improve your resume score.',
         'icon': Icons.tune_rounded,
-        'color': const Color(0xFF22C55E),
-        'btn': 'Optimize Resume',
+        'color': forest,
+        'btn': 'Audit Resume',
         'action': () {
           if (_resumes.isNotEmpty) {
             Navigator.push(
@@ -767,7 +938,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'title': 'AI Bullet Rewriter',
         'desc': 'Transform weak bullet points into high-impact STAR-method achievement statements.',
         'icon': Icons.edit_note_rounded,
-        'color': const Color(0xFF8B5CF6),
+        'color': cobalt,
         'btn': 'Rewrite Bullets',
         'action': () {
           if (_resumes.isNotEmpty) {
@@ -787,35 +958,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       },
       {
-        'title': 'AI Cover Letter Generator',
-        'desc': 'Generate tailored, persuasive cover letters matching any job description.',
-        'icon': Icons.email_rounded,
-        'color': const Color(0xFF3B82F6),
-        'btn': 'Generate Letter',
-        'action': () => setState(() => _selectedIndex = 4),
-      },
-      {
-        'title': 'AI Interview Prep Coach',
-        'desc': 'Practice role-specific technical, HR, and STAR behavioral interview questions.',
-        'icon': Icons.record_voice_over_rounded,
-        'color': const Color(0xFFF59E0B),
-        'btn': 'Start Practice',
-        'action': () => setState(() => _selectedIndex = 4),
-      },
-      {
-        'title': 'AI Career Roadmap',
-        'desc': 'Get a phase-by-phase transition plan with required tech stacks & certifications.',
-        'icon': Icons.alt_route_rounded,
-        'color': const Color(0xFF14B8A6),
-        'btn': 'View Roadmap',
-        'action': () => setState(() => _selectedIndex = 5),
-      },
-      {
         'title': 'Job Description Matcher',
         'desc': 'Paste a job description to calculate semantic fit, missing skills, and keywords.',
         'icon': Icons.document_scanner_rounded,
-        'color': const Color(0xFF6366F1),
-        'btn': 'Match Job Description',
+        'color': forest,
+        'btn': 'Match JD Dossier',
         'action': () {
           if (_resumes.isNotEmpty) {
             Navigator.push(
@@ -833,6 +980,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         }
       },
+      {
+        'title': 'Skill Gap Intelligence',
+        'desc': 'Audit missing skills and generate market-aligned course blueprints.',
+        'icon': Icons.smart_toy_rounded,
+        'color': ochre,
+        'btn': 'Inspect Skill Gap',
+        'action': () => setState(() => _selectedIndex = 4),
+      },
+      {
+        'title': 'AI Career Transition Roadmap',
+        'desc': 'Get a phase-by-phase transition plan with required tech stacks & certifications.',
+        'icon': Icons.alt_route_rounded,
+        'color': cobalt,
+        'btn': 'View Roadmap',
+        'action': () => setState(() => _selectedIndex = 5),
+      },
+      {
+        'title': 'AI Interview Prep Coach',
+        'desc': 'Practice role-specific technical, HR, and STAR behavioral interview questions.',
+        'icon': Icons.record_voice_over_rounded,
+        'color': ochre,
+        'btn': 'Practice Simulator',
+        'action': () => setState(() => _selectedIndex = 4),
+      },
     ];
 
     return SingleChildScrollView(
@@ -841,13 +1012,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'AI Tools & Feature Hub',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textPrimary),
+            'Casefile Intelligence Hub',
+            style: AppTypography.displayHero(color: ink, fontSize: 24),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Select an AI feature to analyze, rewrite, or accelerate your career.',
-            style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+          Text(
+            'Select an operational module to audit, rewrite, or accelerate your career dossier.',
+            style: AppTypography.bodyRegular(color: inkSoft, fontSize: 13),
           ),
           const SizedBox(height: 24),
           LayoutBuilder(
@@ -862,48 +1033,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   return Container(
                     width: itemWidth,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: borderColor),
+                      color: paperAlt,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: rule, width: 1.0),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(12),
+                            color: color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
                           ),
-                          child: Icon(tool['icon'] as IconData, color: color, size: 28),
+                          child: Icon(tool['icon'] as IconData, color: color, size: 22),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
                         Text(
                           tool['title'] as String,
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+                          style: AppTypography.displayHeading(color: ink, fontSize: 15.5),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           tool['desc'] as String,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8), height: 1.4),
+                          style: AppTypography.bodyRegular(color: inkSoft, fontSize: 12),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 18),
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton(
+                          child: OutlinedButton(
                             onPressed: tool['action'] as VoidCallback,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: color,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: color,
+                              side: BorderSide(color: color, width: 1),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                             ),
                             child: Text(
                               tool['btn'] as String,
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                              style: AppTypography.buttonText(color: color, fontSize: 12),
                             ),
                           ),
                         ),
@@ -931,9 +1102,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 3:
         return _buildAIToolsGridScreen(isDark);
       case 4:
-        return const SkillGapScreen();
+        return _isPremium
+            ? const SkillGapScreen()
+            : PremiumPlanPaywall(
+                featureTitle: "Unlock AI Career Copilot & Skill Gap Intelligence",
+                featureDescription:
+                    "Deep semantic skill comparison against real-time industry requirements, missing competency blueprints, and interview preparation.",
+                onSubscribed: () => setState(() => _isPremium = true),
+              );
       case 5:
-        return const CareerRoadmapScreen();
+        return _isPremium
+            ? const CareerRoadmapScreen()
+            : PremiumPlanPaywall(
+                featureTitle: "Unlock AI Career Transition & Mastery Roadmap",
+                featureDescription:
+                    "Generate a complete learning curriculum, project blueprints, YouTube tutorials, documentation portals, and certification guides for your target tech position.",
+                onSubscribed: () => setState(() => _isPremium = true),
+              );
       case 6:
         return const SettingsScreen();
       case 7:
@@ -943,21 +1128,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  int _getMobileNavIndex() {
+    if (_selectedIndex == 1) return 1;
+    if (_selectedIndex == 3) return 2;
+    if (_selectedIndex == 4 || _selectedIndex == 5) return 3;
+    if (_selectedIndex == 6 || _selectedIndex == 7) return 4;
+    return 0;
+  }
+
+  void _onMobileNavTapped(int index) {
+    int target = index;
+    if (index == 2) target = 3;
+    if (index == 3) target = 4;
+    if (index == 4) target = 7;
+    setState(() => _selectedIndex = target);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isDesktop = MediaQuery.of(context).size.width >= 900;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final inkSoft = AppColors.resolveInkSoft(isDark);
+    final paper = AppColors.resolvePaper(isDark);
 
     return Scaffold(
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
+          ? Center(child: CircularProgressIndicator(color: cobalt))
           : isDesktop
               ? Row(
                   children: [
                     WebSidebar(
                       selectedIndex: _selectedIndex,
+                      isPremium: _isPremium,
                       onItemSelected: (index) => setState(() => _selectedIndex = index),
-                      onUpgradePressed: () {},
+                      onUpgradePressed: () => setState(() => _selectedIndex = 5),
+                      onLogoutPressed: () => _confirmLogout(context),
                     ),
                     Expanded(child: _getScreenForTab(_selectedIndex)),
                   ],
@@ -966,17 +1173,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bottomNavigationBar: isDesktop
           ? null
           : BottomNavigationBar(
-              currentIndex: _selectedIndex > 4 ? 0 : _selectedIndex,
-              onTap: (index) => setState(() => _selectedIndex = index),
+              currentIndex: _getMobileNavIndex(),
+              onTap: _onMobileNavTapped,
               type: BottomNavigationBarType.fixed,
-              selectedItemColor: const Color(0xFF6366F1),
-              unselectedItemColor: const Color(0xFF94A3B8),
+              backgroundColor: paper,
+              selectedItemColor: cobalt,
+              unselectedItemColor: inkSoft,
               items: const [
                 BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-                BottomNavigationBarItem(icon: Icon(Icons.description_rounded), label: 'Resumes'),
-                BottomNavigationBarItem(icon: Icon(Icons.auto_awesome_rounded), label: 'AI Tools'),
-                BottomNavigationBarItem(icon: Icon(Icons.smart_toy_rounded), label: 'Copilot'),
-                BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+                BottomNavigationBarItem(icon: Icon(Icons.folder_open_rounded), label: 'Dossiers'),
+                BottomNavigationBarItem(icon: Icon(Icons.document_scanner_rounded), label: 'Audit'),
+                BottomNavigationBarItem(icon: Icon(Icons.alt_route_rounded), label: 'Roadmap'),
+                BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Settings'),
               ],
             ),
     );

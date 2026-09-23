@@ -1,184 +1,236 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
+import 'package:frontend/core/widgets/folder_tab_nav_item.dart';
 
 class WebSidebar extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onItemSelected;
   final VoidCallback onUpgradePressed;
+  final VoidCallback? onLogoutPressed;
+  final bool isPremium;
 
   const WebSidebar({
     super.key,
     required this.selectedIndex,
     required this.onItemSelected,
     required this.onUpgradePressed,
+    this.onLogoutPressed,
+    this.isPremium = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final sidebarBg = isDark ? const Color(0xFF1E1B4B) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final activeBg = isDark ? const Color(0xFF4338CA) : const Color(0xFFEEF2FF);
-    final activeTextColor = isDark ? Colors.white : const Color(0xFF6366F1);
-    final inactiveTextColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final paper = AppColors.resolvePaper(isDark);
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final ink = AppColors.resolveInk(isDark);
+    final inkSoft = AppColors.resolveInkSoft(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final ochre = AppColors.resolveOchre(isDark);
+    final forest = AppColors.resolveForest(isDark);
+    final brick = AppColors.resolveBrick(isDark);
 
     final navItems = [
-      {'icon': Icons.dashboard_rounded, 'label': 'Dashboard'},
-      {'icon': Icons.description_rounded, 'label': 'Resumes'},
-      {'icon': Icons.view_kanban_rounded, 'label': 'Your Jobs'},
-      {'icon': Icons.auto_awesome_rounded, 'label': 'AI Tools'},
-      {'icon': Icons.smart_toy_rounded, 'label': 'Career Copilot'},
-      {'icon': Icons.alt_route_rounded, 'label': 'Roadmap'},
-      {'icon': Icons.person_rounded, 'label': 'My Profile'},
-      {'icon': Icons.settings_rounded, 'label': 'Settings'},
+      {'label': 'Dashboard', 'isPro': false, 'icon': Icons.space_dashboard_outlined},
+      {'label': 'My Resumes', 'isPro': false, 'icon': Icons.folder_open_rounded},
+      {'label': 'Tracked Jobs', 'isPro': false, 'icon': Icons.view_kanban_outlined},
+      {'label': 'AI Analysis & Tools', 'isPro': false, 'icon': Icons.document_scanner_outlined},
+      {'label': 'Skill Gap Intelligence', 'isPro': true, 'icon': Icons.analytics_outlined},
+      {'label': 'Career Roadmap', 'isPro': true, 'icon': Icons.alt_route_rounded},
+      {'label': 'Settings', 'isPro': false, 'icon': Icons.tune_rounded},
     ];
 
     return Container(
-      width: 250,
+      width: 240,
       decoration: BoxDecoration(
-        color: sidebarBg,
-        border: Border(right: BorderSide(color: borderColor, width: 1)),
+        color: paper,
+        border: Border(right: BorderSide(color: rule, width: 1.0)),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // BRAND LOGO HEADER
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+          // BRAND DOSSIER HEADER
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 24, 18, 20),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: cobalt.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: cobalt.withValues(alpha: 0.4), width: 1),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF6366F1).withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    )
+                  child: Center(
+                    child: Icon(Icons.inventory_2_outlined, color: cobalt, size: 18),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Casefile',
+                      style: AppTypography.displayHeading(
+                        color: ink,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Career Working File',
+                      style: AppTypography.monoLabel(
+                        color: inkSoft,
+                        fontSize: 10,
+                      ),
+                    ),
                   ],
                 ),
-                child: const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'ResumeAI',
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 32),
 
-          // NAV ITEMS LIST
+          // Hairline separator
+          Divider(color: rule, height: 1, thickness: 1),
+          const SizedBox(height: 8),
+
+          // NAVIGATION SECTION HEADER
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            child: Text(
+              "DOSSIER INDEX",
+              style: AppTypography.monoLabel(
+                color: inkSoft,
+                fontSize: 10,
+              ).copyWith(letterSpacing: 0.8),
+            ),
+          ),
+
+          // NAV ITEMS LIST CONSUMING FolderTabNavItem
           Expanded(
-            child: ListView.separated(
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
               itemCount: navItems.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 6),
               itemBuilder: (context, index) {
                 final item = navItems[index];
                 final isSelected = selectedIndex == index;
 
-                return Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => onItemSelected(index),
-                    borderRadius: BorderRadius.circular(12),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: isSelected ? activeBg : Colors.transparent,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            item['icon'] as IconData,
-                            color: isSelected ? activeTextColor : inactiveTextColor,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            item['label'] as String,
-                            style: TextStyle(
-                              color: isSelected ? activeTextColor : inactiveTextColor,
-                              fontSize: 14,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                return FolderTabNavItem(
+                  label: item['label'] as String,
+                  isSelected: isSelected,
+                  isPro: item['isPro'] as bool,
+                  isPremiumUser: isPremium,
+                  icon: item['icon'] as IconData?,
+                  onTap: () => onItemSelected(index),
                 );
               },
             ),
           ),
 
-          // PRO PLAN UPGRADE BANNER
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: borderColor),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.workspace_premium_rounded, color: Color(0xFFF59E0B), size: 18),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Pro Plan',
-                      style: TextStyle(
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
+          // PRO TIER CASEFILE SUMMARY CARD
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: paperAlt,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: rule, width: 1.0),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        isPremium ? Icons.verified_outlined : Icons.folder_special_outlined,
+                        color: isPremium ? forest : ochre,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isPremium ? 'Active Clearance' : 'Executive Tier',
+                        style: AppTypography.bodyRegular(
+                          color: ink,
+                          fontSize: 12.5,
+                        ).copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    isPremium
+                        ? 'Unlimited access to roadmaps, skill blueprints & exportable dossiers.'
+                        : 'Unlock automated roadmaps, skill gap audits & executive reports.',
+                    style: AppTypography.bodyRegular(
+                      color: inkSoft,
+                      fontSize: 11,
+                      height: 1.35,
+                    ),
+                  ),
+                  if (!isPremium) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: onUpgradePressed,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: cobalt,
+                          side: BorderSide(color: cobalt, width: 1),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        child: Text(
+                          'Upgrade Access',
+                          style: AppTypography.buttonText(
+                            color: cobalt,
+                            fontSize: 11.5,
+                          ),
+                        ),
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Upgrade for unlimited AI features & coaching.',
-                  style: TextStyle(
-                    color: inactiveTextColor,
-                    fontSize: 11,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: onUpgradePressed,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6366F1),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'Upgrade Now',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+
+          // LOGOUT ACTION
+          if (onLogoutPressed != null) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+              child: InkWell(
+                onTap: onLogoutPressed,
+                borderRadius: BorderRadius.circular(4),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: brick.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: brick.withValues(alpha: 0.25), width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout_rounded, color: brick, size: 16),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Close Dossier',
+                        style: AppTypography.bodyRegular(
+                          color: brick,
+                          fontSize: 12.5,
+                        ).copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -2,8 +2,11 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/di/injection.dart';
+import 'package:frontend/core/network/api_client.dart';
+import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
+import 'package:frontend/core/widgets/pipeline_funnel_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SelectedJobsScreen extends StatefulWidget {
@@ -52,12 +55,12 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
   };
 
   final Map<String, Color> _columnColors = {
-    'SAVED': const Color(0xFF6366F1),
-    'SHORTLISTED': const Color(0xFFF59E0B),
-    'APPLIED': const Color(0xFF3B82F6),
-    'INTERVIEWING': const Color(0xFF8B5CF6),
-    'OFFER_RECEIVED': const Color(0xFF22C55E),
-    'REJECTED': const Color(0xFFEF4444),
+    'SAVED': AppColors.cobalt,
+    'SHORTLISTED': AppColors.ochre,
+    'APPLIED': AppColors.cobalt,
+    'INTERVIEWING': AppColors.ochre,
+    'OFFER_RECEIVED': AppColors.forest,
+    'REJECTED': AppColors.brick,
   };
 
   @override
@@ -195,10 +198,11 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
       final response = await sl<ApiClient>().patch('jobs/selected/$id/', data: {'status': newStatus});
       if (response.statusCode == 200) {
         if (mounted) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text("Moved to ${_columnTitles[newStatus] ?? newStatus}"),
-              backgroundColor: _columnColors[newStatus] ?? const Color(0xFF6366F1),
+              backgroundColor: _columnColors[newStatus] ?? AppColors.resolveCobalt(isDark),
               duration: const Duration(seconds: 2),
             ),
           );
@@ -222,8 +226,9 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
         });
       }
       if (mounted) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to update status."), backgroundColor: Colors.redAccent),
+          SnackBar(content: const Text("Failed to update status."), backgroundColor: AppColors.resolveBrick(isDark)),
         );
       }
     }
@@ -237,15 +242,17 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
           _jobs.removeWhere((j) => j['id'].toString() == id);
         });
         if (mounted) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Job removed from tracker."), backgroundColor: Color(0xFF6366F1)),
+            SnackBar(content: const Text("Job entry removed from tracker."), backgroundColor: AppColors.resolveCobalt(isDark)),
           );
         }
       }
     } catch (e) {
       if (mounted) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to delete job entry."), backgroundColor: Colors.redAccent),
+          SnackBar(content: const Text("Failed to delete job entry."), backgroundColor: AppColors.resolveBrick(isDark)),
         );
       }
     }
@@ -285,31 +292,69 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
     }).toList();
   }
 
+  Map<String, dynamic> _calculateFunnelCounts() {
+    return {
+      'saved': _jobs.where((j) {
+        final st = (j['status'] ?? 'SAVED').toString();
+        return st == 'SAVED' || st == 'NOT_APPLIED' || st == 'SHORTLISTED';
+      }).length,
+      'applied': _jobs.where((j) => (j['status'] ?? '') == 'APPLIED').length,
+      'interviewing': _jobs.where((j) {
+        final st = (j['status'] ?? '').toString();
+        return st == 'INTERVIEWING' || st == 'INTERVIEW_CALL_RECEIVED';
+      }).length,
+      'offer': _jobs.where((j) => (j['status'] ?? '') == 'OFFER_RECEIVED').length,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final paper = AppColors.resolvePaper(isDark);
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final textPrimary = AppColors.resolveInk(isDark);
+    final textSecondary = AppColors.resolveInkSoft(isDark);
+    final borderColor = AppColors.resolveRule(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
 
     final filteredJobs = _getFilteredJobs();
+    final funnelCounts = _calculateFunnelCounts();
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: paper,
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
-          : RefreshIndicator(
+          ? Center(child: CircularProgressIndicator(color: cobalt))
+          : _errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline_rounded, color: AppColors.resolveBrick(isDark), size: 40),
+                      const SizedBox(height: 12),
+                      Text(_errorMessage!, style: AppTypography.bodyRegular(color: textPrimary)),
+                      const SizedBox(height: 14),
+                      ElevatedButton(
+                        onPressed: _loadSelectedJobs,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: cobalt,
+                          foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        ),
+                        child: const Text("Retry"),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
               onRefresh: _loadSelectedJobs,
-              color: const Color(0xFF6366F1),
+              color: cobalt,
               child: Column(
                 children: [
                   // HEADER SECTION
                   Container(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
                     decoration: BoxDecoration(
-                      color: cardBg,
+                      color: paperAlt,
                       border: Border(bottom: BorderSide(color: borderColor)),
                     ),
                     child: Column(
@@ -318,12 +363,13 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(10),
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF6366F1).withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(12),
+                                color: cobalt.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: borderColor),
                               ),
-                              child: const Icon(Icons.view_kanban_rounded, color: Color(0xFF6366F1), size: 24),
+                              child: Icon(Icons.view_kanban_rounded, color: cobalt, size: 22),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -331,17 +377,16 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "Your Jobs & Applications Tracker",
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: textPrimary,
-                                      letterSpacing: -0.5,
-                                    ),
+                                    "PIPELINE // APPLICATION TRACKER",
+                                    style: AppTypography.monoLabel(color: textSecondary, fontSize: 10.5).copyWith(letterSpacing: 0.8),
                                   ),
+                                  const SizedBox(height: 2),
                                   Text(
-                                    "Drag and drop cards across pipeline stages to track your application progress",
-                                    style: TextStyle(fontSize: 13, color: textSecondary),
+                                    "Application Dossier Pipeline",
+                                    style: AppTypography.displayHeading(
+                                      fontSize: 20,
+                                      color: textPrimary,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -351,34 +396,35 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
                             if (_isKanbanView) ...[
                               Container(
                                 decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: paper,
+                                  borderRadius: BorderRadius.circular(4),
                                   border: Border.all(color: borderColor),
                                 ),
                                 child: Row(
                                   children: [
                                     IconButton(
-                                      icon: const Icon(Icons.chevron_left_rounded, size: 20),
+                                      icon: const Icon(Icons.chevron_left_rounded, size: 18),
                                       color: textPrimary,
                                       tooltip: "Scroll Left",
                                       onPressed: () {
                                         if (_kanbanScrollController.hasClients) {
                                           _kanbanScrollController.animateTo(
-                                            (_kanbanScrollController.offset - 350).clamp(0.0, _kanbanScrollController.position.maxScrollExtent),
+                                            (_kanbanScrollController.offset - 340).clamp(0.0, _kanbanScrollController.position.maxScrollExtent),
                                             duration: const Duration(milliseconds: 250),
                                             curve: Curves.easeInOut,
                                           );
                                         }
                                       },
                                     ),
+                                    Container(width: 1, height: 20, color: borderColor),
                                     IconButton(
-                                      icon: const Icon(Icons.chevron_right_rounded, size: 20),
+                                      icon: const Icon(Icons.chevron_right_rounded, size: 18),
                                       color: textPrimary,
                                       tooltip: "Scroll Right",
                                       onPressed: () {
                                         if (_kanbanScrollController.hasClients) {
                                           _kanbanScrollController.animateTo(
-                                            (_kanbanScrollController.offset + 350).clamp(0.0, _kanbanScrollController.position.maxScrollExtent),
+                                            (_kanbanScrollController.offset + 340).clamp(0.0, _kanbanScrollController.position.maxScrollExtent),
                                             duration: const Duration(milliseconds: 250),
                                             curve: Curves.easeInOut,
                                           );
@@ -393,21 +439,22 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
                             // View Switcher (Kanban vs List)
                             Container(
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(10),
+                                color: paper,
+                                borderRadius: BorderRadius.circular(4),
                                 border: Border.all(color: borderColor),
                               ),
                               child: Row(
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.view_kanban_rounded, size: 20),
-                                    color: _isKanbanView ? const Color(0xFF6366F1) : textSecondary,
+                                    icon: const Icon(Icons.view_kanban_rounded, size: 18),
+                                    color: _isKanbanView ? cobalt : textSecondary,
                                     tooltip: "Kanban Board",
                                     onPressed: () => _changeViewMode(true),
                                   ),
+                                  Container(width: 1, height: 20, color: borderColor),
                                   IconButton(
-                                    icon: const Icon(Icons.format_list_bulleted_rounded, size: 20),
-                                    color: !_isKanbanView ? const Color(0xFF6366F1) : textSecondary,
+                                    icon: const Icon(Icons.format_list_bulleted_rounded, size: 18),
+                                    color: !_isKanbanView ? cobalt : textSecondary,
                                     tooltip: "List / Tab View",
                                     onPressed: () => _changeViewMode(false),
                                   ),
@@ -416,49 +463,53 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
                         // Search bar & status counters
                         Row(
                           children: [
                             Expanded(
                               flex: 3,
                               child: TextField(
-                                style: TextStyle(color: textPrimary, fontSize: 13),
+                                style: AppTypography.bodyRegular(color: textPrimary, fontSize: 13),
                                 decoration: InputDecoration(
-                                  hintText: "Search your tracked jobs by role, company, location...",
-                                  hintStyle: TextStyle(color: textSecondary, fontSize: 13),
+                                  hintText: "Search tracked jobs by role, company, location...",
+                                  hintStyle: AppTypography.bodyRegular(color: textSecondary, fontSize: 13),
                                   prefixIcon: Icon(Icons.search_rounded, color: textSecondary, size: 18),
                                   filled: true,
-                                  fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                                  fillColor: paper,
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(4),
                                     borderSide: BorderSide(color: borderColor),
                                   ),
                                   enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(4),
                                     borderSide: BorderSide(color: borderColor),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                    borderSide: BorderSide(color: cobalt, width: 1.5),
                                   ),
                                 ),
                                 onChanged: (val) => setState(() => _searchQuery = val),
                               ),
                             ),
                             const SizedBox(width: 16),
-                            // Quick stats pill
+                            // Quick stats tag
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF14B8A6).withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: const Color(0xFF14B8A6).withOpacity(0.3)),
+                                color: paper,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: borderColor),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.assignment_turned_in_rounded, color: Color(0xFF14B8A6), size: 16),
+                                  Icon(Icons.inventory_2_outlined, color: textSecondary, size: 15),
                                   const SizedBox(width: 6),
                                   Text(
-                                    "${filteredJobs.length} Total Tracked",
-                                    style: const TextStyle(color: Color(0xFF14B8A6), fontWeight: FontWeight.bold, fontSize: 12),
+                                    "${filteredJobs.length} TRACKED",
+                                    style: AppTypography.monoLabel(color: textPrimary, fontSize: 11).copyWith(fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
@@ -469,11 +520,21 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
                     ),
                   ),
 
+                  // PIPELINE FUNNEL BAR SECTION (Consumes real counts)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                    child: PipelineFunnelBar(
+                      fallbackCounts: funnelCounts,
+                      showHeader: true,
+                      title: "PIPELINE VELOCITY & STAGE CONVERSION",
+                    ),
+                  ),
+
                   // BODY: KANBAN OR TAB VIEW
                   Expanded(
                     child: _isKanbanView
-                        ? _buildKanbanBoard(filteredJobs, cardBg, borderColor, textPrimary, textSecondary, isDark)
-                        : _buildTabListView(filteredJobs, cardBg, borderColor, textPrimary, textSecondary, isDark),
+                        ? _buildKanbanBoard(filteredJobs, paperAlt, borderColor, textPrimary, textSecondary, isDark)
+                        : _buildTabListView(filteredJobs, paperAlt, borderColor, textPrimary, textSecondary, isDark),
                   ),
                 ],
               ),
@@ -498,7 +559,7 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
           controller: _kanbanScrollController,
           scrollDirection: Axis.horizontal,
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: _kanbanColumns.map((colStatus) {
@@ -519,7 +580,7 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
 
   Widget _buildKanbanColumn(String status, List<dynamic> colJobs, Color cardBg, Color borderColor, Color textPrimary, Color textSecondary, bool isDark) {
     final colTitle = _columnTitles[status] ?? status;
-    final colColor = _columnColors[status] ?? const Color(0xFF6366F1);
+    final colColor = _columnColors[status] ?? AppColors.resolveCobalt(isDark);
     final colIcon = _columnIcons[status] ?? Icons.folder_rounded;
 
     return DragTarget<Map<String, dynamic>>(
@@ -537,16 +598,16 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
 
         return AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          width: 320,
-          margin: const EdgeInsets.only(right: 18),
+          width: 310,
+          margin: const EdgeInsets.only(right: 16),
           decoration: BoxDecoration(
             color: isHighlighted
-                ? colColor.withOpacity(0.12)
-                : (isDark ? const Color(0xFF1E293B).withOpacity(0.7) : const Color(0xFFF1F5F9)),
-            borderRadius: BorderRadius.circular(18),
+                ? colColor.withValues(alpha: 0.08)
+                : cardBg,
+            borderRadius: BorderRadius.circular(4),
             border: Border.all(
-              color: isHighlighted ? colColor : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-              width: isHighlighted ? 2 : 1,
+              color: isHighlighted ? colColor : borderColor,
+              width: isHighlighted ? 1.5 : 1.0,
             ),
           ),
           child: Column(
@@ -554,43 +615,44 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
             children: [
               // Column Header
               Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(6),
+                      padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
-                        color: colColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
+                        color: colColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(color: colColor.withValues(alpha: 0.3)),
                       ),
-                      child: Icon(colIcon, color: colColor, size: 16),
+                      child: Icon(colIcon, color: colColor, size: 15),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         colTitle,
-                        style: TextStyle(
+                        style: AppTypography.displayHeading(
                           color: textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
                         ),
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                        color: colColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
+                        color: colColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(color: colColor.withValues(alpha: 0.25)),
                       ),
                       child: Text(
                         "${colJobs.length}",
-                        style: TextStyle(color: colColor, fontSize: 12, fontWeight: FontWeight.bold),
+                        style: AppTypography.monoLabel(color: colColor, fontSize: 11).copyWith(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Divider(height: 1),
+              Divider(height: 1, thickness: 1, color: borderColor),
 
               // Column Body Cards List
               Expanded(
@@ -601,18 +663,18 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.drag_indicator_rounded, color: textSecondary.withOpacity(0.4), size: 32),
+                              Icon(Icons.inbox_outlined, color: textSecondary.withValues(alpha: 0.4), size: 28),
                               const SizedBox(height: 8),
                               Text(
-                                "Drag jobs here",
-                                style: TextStyle(color: textSecondary, fontSize: 12),
+                                "NO FILES IN STAGE",
+                                style: AppTypography.monoLabel(color: textSecondary, fontSize: 11).copyWith(letterSpacing: 0.5),
                               ),
                             ],
                           ),
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10),
                         itemCount: colJobs.length,
                         itemBuilder: (context, idx) {
                           final job = colJobs[idx] as Map<String, dynamic>;
@@ -628,29 +690,23 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
   }
 
   Widget _buildDraggableJobCard(Map<String, dynamic> job, String colStatus, Color cardBg, Color borderColor, Color textPrimary, Color textSecondary, bool isDark) {
+    final cobalt = AppColors.resolveCobalt(isDark);
     return Draggable<Map<String, dynamic>>(
       data: job,
       onDragUpdate: (details) => _handleDragUpdate(details.globalPosition.dx),
       onDragEnd: (details) => _stopAutoScroll(),
       onDraggableCanceled: (velocity, offset) => _stopAutoScroll(),
       feedback: Material(
-        elevation: 10,
-        borderRadius: BorderRadius.circular(14),
+        elevation: 0,
+        borderRadius: BorderRadius.circular(4),
         color: Colors.transparent,
         child: Container(
-          width: 300,
-          padding: const EdgeInsets.all(16),
+          width: 290,
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF6366F1), width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF6366F1).withOpacity(0.3),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              )
-            ],
+            color: cardBg,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: cobalt, width: 1.5),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -658,12 +714,12 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
             children: [
               Text(
                 (job['job_title'] ?? job['title'] ?? 'Software Developer').toString(),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                style: AppTypography.displayHeading(fontSize: 13, color: textPrimary),
               ),
               const SizedBox(height: 4),
               Text(
                 (job['company_name'] ?? job['company'] ?? 'Tech Company').toString(),
-                style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                style: AppTypography.bodyRegular(fontSize: 11, color: textSecondary),
               ),
             ],
           ),
@@ -683,21 +739,16 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
     final location = (job['location'] ?? 'Remote').toString();
     final applyUrl = (job['apply_link'] ?? job['url'] ?? '').toString();
     final jobId = job['id']?.toString() ?? '';
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final paper = AppColors.resolvePaper(isDark);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F172A) : Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          )
-        ],
+        color: paper,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: borderColor, width: 1.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -711,21 +762,19 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
                   children: [
                     Text(
                       title,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
+                      style: AppTypography.displayHeading(
+                        fontSize: 13.5,
                         color: textPrimary,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       company,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF6366F1),
+                      style: AppTypography.bodyMedium(
+                        fontSize: 11.5,
+                        color: cobalt,
                       ),
                     ),
                   ],
@@ -733,8 +782,8 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
               ),
               // Move Status Popup Menu
               PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert_rounded, size: 18, color: textSecondary),
-                tooltip: "Move to Stage",
+                icon: Icon(Icons.more_vert_rounded, size: 16, color: textSecondary),
+                tooltip: "Move Stage",
                 onSelected: (newSt) {
                   if (newSt == 'DELETE') {
                     _deleteJob(jobId);
@@ -747,20 +796,20 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
                         value: st,
                         child: Row(
                           children: [
-                            Icon(_columnIcons[st], color: _columnColors[st], size: 16),
+                            Icon(_columnIcons[st], color: _columnColors[st], size: 15),
                             const SizedBox(width: 8),
-                            Text(_columnTitles[st] ?? st),
+                            Text(_columnTitles[st] ?? st, style: const TextStyle(fontSize: 13)),
                           ],
                         ),
                       )),
                   const PopupMenuDivider(),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'DELETE',
                     child: Row(
                       children: [
-                        Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 16),
-                        SizedBox(width: 8),
-                        Text("Remove", style: TextStyle(color: Colors.redAccent)),
+                        Icon(Icons.delete_outline_rounded, color: AppColors.resolveBrick(isDark), size: 15),
+                        const SizedBox(width: 8),
+                        Text("Remove", style: TextStyle(color: AppColors.resolveBrick(isDark), fontSize: 13)),
                       ],
                     ),
                   ),
@@ -768,43 +817,44 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.location_on_rounded, size: 13, color: Color(0xFF14B8A6)),
+              Icon(Icons.location_on_outlined, size: 12, color: textSecondary),
               const SizedBox(width: 3),
               Expanded(
                 child: Text(
                   location,
-                  style: TextStyle(fontSize: 11, color: textSecondary),
+                  style: AppTypography.bodyRegular(fontSize: 11, color: textSecondary),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               InkWell(
                 onTap: () => _openApplyLink(applyUrl, company, title, location),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(3),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(6),
+                    color: cobalt.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(3),
+                    border: Border.all(color: cobalt.withValues(alpha: 0.3)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.open_in_new_rounded, color: Color(0xFF6366F1), size: 12),
-                      SizedBox(width: 4),
-                      Text("Apply", style: TextStyle(fontSize: 11, color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
+                      Icon(Icons.open_in_new_rounded, color: cobalt, size: 11),
+                      const SizedBox(width: 4),
+                      Text("Apply", style: AppTypography.monoLabel(color: cobalt, fontSize: 10).copyWith(fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
               ),
-              Icon(Icons.drag_indicator_rounded, size: 16, color: textSecondary.withOpacity(0.5)),
+              Icon(Icons.drag_indicator_rounded, size: 15, color: textSecondary.withValues(alpha: 0.4)),
             ],
           ),
         ],
@@ -813,6 +863,7 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
   }
 
   Widget _buildTabListView(List<dynamic> jobs, Color cardBg, Color borderColor, Color textPrimary, Color textSecondary, bool isDark) {
+    final cobalt = AppColors.resolveCobalt(isDark);
     return Column(
       children: [
         Container(
@@ -820,9 +871,9 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
           child: TabBar(
             controller: _tabController,
             isScrollable: true,
-            labelColor: const Color(0xFF6366F1),
+            labelColor: cobalt,
             unselectedLabelColor: textSecondary,
-            indicatorColor: const Color(0xFF6366F1),
+            indicatorColor: cobalt,
             tabs: [
               Tab(text: "All (${jobs.length})"),
               ..._kanbanColumns.map((st) {
@@ -854,16 +905,16 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox_rounded, size: 48, color: textSecondary.withOpacity(0.4)),
+            Icon(Icons.inbox_outlined, size: 44, color: textSecondary.withValues(alpha: 0.4)),
             const SizedBox(height: 12),
-            Text("No jobs found in this tab.", style: TextStyle(color: textSecondary, fontSize: 14)),
+            Text("No jobs found in this section.", style: AppTypography.bodyRegular(color: textSecondary, fontSize: 13)),
           ],
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       itemCount: jobs.length,
       itemBuilder: (context, idx) {
         final job = jobs[idx];
@@ -874,67 +925,69 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
         final applyUrl = (job['apply_link'] ?? job['url'] ?? '').toString();
         final jobId = job['id']?.toString() ?? '';
 
-        final colColor = _columnColors[status] ?? const Color(0xFF6366F1);
+        final colColor = _columnColors[status] ?? AppColors.resolveCobalt(isDark);
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          padding: const EdgeInsets.all(18),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: cardBg,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(4),
             border: Border.all(color: borderColor),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: colColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  color: colColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: colColor.withValues(alpha: 0.3)),
                 ),
-                child: Icon(_columnIcons[status] ?? Icons.work_rounded, color: colColor, size: 22),
+                child: Icon(_columnIcons[status] ?? Icons.work_outline_rounded, color: colColor, size: 20),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary)),
-                    const SizedBox(height: 4),
-                    Text("$company • $location", style: TextStyle(fontSize: 13, color: textSecondary)),
+                    Text(title, style: AppTypography.displayHeading(fontSize: 15, color: textPrimary)),
+                    const SizedBox(height: 3),
+                    Text("$company • $location", style: AppTypography.bodyRegular(fontSize: 12.5, color: textSecondary)),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
               // Status Badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: colColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: colColor.withOpacity(0.3)),
+                  color: colColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: colColor.withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   _columnTitles[status] ?? status,
-                  style: TextStyle(color: colColor, fontWeight: FontWeight.bold, fontSize: 11),
+                  style: AppTypography.monoLabel(color: colColor, fontSize: 10).copyWith(fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(width: 10),
               // Quick action buttons
               OutlinedButton.icon(
                 onPressed: () => _openApplyLink(applyUrl, company, title, location),
-                icon: const Icon(Icons.open_in_new_rounded, size: 14),
-                label: const Text("Apply", style: TextStyle(fontSize: 12)),
+                icon: const Icon(Icons.open_in_new_rounded, size: 13),
+                label: const Text("Apply", style: TextStyle(fontSize: 11)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: textPrimary,
                   side: BorderSide(color: borderColor),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               IconButton(
-                icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 20),
+                icon: Icon(Icons.delete_outline_rounded, color: AppColors.resolveBrick(isDark), size: 18),
                 onPressed: () => _deleteJob(jobId),
                 tooltip: "Delete",
               ),

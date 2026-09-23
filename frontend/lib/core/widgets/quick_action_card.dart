@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/theme/app_colors.dart';
 
 class QuickActionCard extends StatelessWidget {
   final String title;
@@ -23,8 +24,10 @@ class QuickActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final cardBg = AppColors.resolvePaperAlt(isDark);
+    final borderColor = AppColors.resolveRule(isDark);
+    final textPrimary = AppColors.resolveInk(isDark);
+    final textSecondary = AppColors.resolveInkSoft(isDark);
 
     return Container(
       width: 180,
@@ -32,27 +35,20 @@ class QuickActionCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(color: borderColor),
-        boxShadow: [
-          if (!isDark)
-            const BoxShadow(
-              color: Color(0x08000000),
-              blurRadius: 10,
-              offset: Offset(0, 4),
-            )
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: iconBgColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+              color: iconBgColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: iconBgColor.withValues(alpha: 0.3)),
             ),
-            child: Icon(icon, color: iconBgColor, size: 24),
+            child: Icon(icon, color: iconBgColor, size: 20),
           ),
           const SizedBox(height: 12),
           Text(
@@ -60,7 +56,7 @@ class QuickActionCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
-              color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+              color: textPrimary,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -71,7 +67,7 @@ class QuickActionCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               height: 1.3,
-              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              color: textSecondary,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -84,11 +80,11 @@ class QuickActionCard extends StatelessWidget {
               onPressed: onTap,
               style: ElevatedButton.styleFrom(
                 backgroundColor: buttonColor,
-                foregroundColor: Colors.white,
+                foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               ),
               child: Text(

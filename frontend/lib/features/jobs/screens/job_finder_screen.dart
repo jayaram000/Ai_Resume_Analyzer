@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/di/injection.dart';
 import 'package:frontend/features/jobs/domain/repositories/job_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:frontend/core/theme/app_colors.dart';
 
 class JobFinderScreen extends StatefulWidget {
   const JobFinderScreen({super.key});
@@ -166,7 +167,7 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Error toggling bookmark: $e"),
-          backgroundColor: Colors.redAccent,
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -198,6 +199,14 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
   }
 
   Widget _buildJobCard(dynamic jobData, {int? recommendationScore}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final ink = AppColors.resolveInk(isDark);
+    final inkSoft = AppColors.resolveInkMuted(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final forest = AppColors.resolveForest(isDark);
+
     // Check if it's the new schema (dict with job, match_score, reasons)
     final bool isRankedSchema =
         jobData is Map &&
@@ -217,148 +226,159 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
     final location = job['location'] ?? 'Remote';
     final isBookmarked = _savedJobIds.contains(jobId);
 
-    return Card(
-      color: const Color(0xFF1E293B).withOpacity(0.7),
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.white.withOpacity(0.05)),
+      decoration: BoxDecoration(
+        color: paperAlt,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: rule),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: ink,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        "$company • $location",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF94A3B8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (displayScore > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF14B8A6).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFF14B8A6).withOpacity(0.4),
-                        width: 1,
+                    const SizedBox(height: 4),
+                    Text(
+                      "$company • $location",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: inkSoft,
                       ),
                     ),
-                    child: Text(
-                      "$displayScore% Match",
-                      style: const TextStyle(
-                        color: Color(0xFF14B8A6),
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              job['description'] ??
-                  'No job details summary available. Click Apply to see full posting details.',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFFE2E8F0),
-                height: 1.4,
-              ),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (reasons.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                "AI Analysis:",
-                style: TextStyle(
-                  color: const Color(0xFF6366F1),
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
+                  ],
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                reasons.join(" "),
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-              ),
+              if (displayScore > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: forest.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: forest.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    "$displayScore% MATCH",
+                    style: TextStyle(
+                      color: forest,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
             ],
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    isBookmarked
-                        ? Icons.bookmark_rounded
-                        : Icons.bookmark_border_rounded,
-                    color: isBookmarked
-                        ? const Color(0xFF14B8A6)
-                        : const Color(0xFF94A3B8),
-                  ),
-                  onPressed: () => _toggleBookmark(job),
-                  tooltip: "Save Job",
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: () => _applyJob(job),
-                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                  label: const Text("Apply Link"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6366F1),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            job['description'] ??
+                'No job details summary available. Click Apply to see full posting details.',
+            style: TextStyle(
+              fontSize: 12,
+              color: inkSoft,
+              height: 1.4,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (reasons.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              "AUDIT MATCH REASONS:",
+              style: TextStyle(
+                color: cobalt,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              reasons.join(" "),
+              style: TextStyle(color: inkSoft, fontSize: 11),
             ),
           ],
-        ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(
+                icon: Icon(
+                  isBookmarked
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                  color: isBookmarked ? forest : inkSoft,
+                ),
+                onPressed: () => _toggleBookmark(job),
+                tooltip: "Save Job",
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () => _applyJob(job),
+                icon: const Icon(Icons.open_in_new_rounded, size: 14),
+                label: const Text(
+                  "APPLY LINK",
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.4),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: cobalt,
+                  foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paper = AppColors.resolvePaper(isDark);
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final ink = AppColors.resolveInk(isDark);
+    final inkSoft = AppColors.resolveInkMuted(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final forest = AppColors.resolveForest(isDark);
+
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: paper,
       body: _isLoading && _jobs.isEmpty && _recommendations.isEmpty
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF6366F1)),
+          ? Center(
+              child: CircularProgressIndicator(color: cobalt),
             )
           : RefreshIndicator(
               onRefresh: _loadRecommendationsAndSaved,
-              color: const Color(0xFF6366F1),
+              color: cobalt,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(24),
@@ -372,11 +392,13 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                           flex: 2,
                           child: TextField(
                             controller: _searchController,
-                            decoration: const InputDecoration(
-                              hintText: "Search role (e.g. Flutter)",
+                            style: TextStyle(color: ink),
+                            decoration: InputDecoration(
+                              hintText: "Search role (e.g. Flutter Engineer)",
                               prefixIcon: Icon(
                                 Icons.search_rounded,
-                                color: Color(0xFF94A3B8),
+                                color: inkSoft,
+                                size: 20,
                               ),
                             ),
                             onSubmitted: (value) => _searchJobs(),
@@ -387,55 +409,53 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                           flex: 1,
                           child: TextField(
                             controller: _locationController,
-                            decoration: const InputDecoration(
+                            style: TextStyle(color: ink),
+                            decoration: InputDecoration(
                               hintText: "Location",
                               prefixIcon: Icon(
-                                Icons.location_on_rounded,
-                                color: Color(0xFF94A3B8),
+                                Icons.location_on_outlined,
+                                color: inkSoft,
+                                size: 20,
                               ),
                             ),
                             onSubmitted: (value) => _searchJobs(),
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Container(
-                          height: 50,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF6366F1), Color(0xFF14B8A6)],
-                            ),
-                          ),
+                        SizedBox(
+                          height: 48,
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _searchJobs,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
+                              backgroundColor: cobalt,
+                              foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                              elevation: 0,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(4),
                               ),
                             ),
                             child: _isLoading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
+                                ? SizedBox(
+                                    width: 18,
+                                    height: 18,
                                     child: CircularProgressIndicator(
-                                      color: Colors.white,
+                                      color: isDark ? AppColors.darkPaper : Colors.white,
                                       strokeWidth: 2,
                                     ),
                                   )
                                 : const Text(
-                                    "Search",
+                                    "SEARCH",
                                     style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -455,15 +475,18 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                             child: ActionChip(
                               label: Text(loc),
                               backgroundColor: isSelected
-                                  ? const Color(0xFF6366F1).withOpacity(0.3)
-                                  : const Color(0xFF1E293B),
+                                  ? cobalt.withValues(alpha: 0.12)
+                                  : paperAlt,
                               labelStyle: TextStyle(
-                                fontSize: 12,
-                                color: isSelected ? const Color(0xFF818CF8) : const Color(0xFF94A3B8),
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                fontSize: 11,
+                                color: isSelected ? cobalt : inkSoft,
+                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
                               ),
-                              side: BorderSide(
-                                color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF334155),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                side: BorderSide(
+                                  color: isSelected ? cobalt : rule,
+                                ),
                               ),
                               onPressed: () {
                                 setState(() {
@@ -482,26 +505,32 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: _experienceLevel,
-                            dropdownColor: const Color(0xFF1E293B),
-                            style: const TextStyle(
-                              color: Colors.white,
+                            dropdownColor: paperAlt,
+                            style: TextStyle(
+                              color: ink,
                               fontSize: 13,
                             ),
                             decoration: InputDecoration(
                               hintText: "Experience Level",
-                              hintStyle: const TextStyle(
-                                color: Color(0xFF94A3B8),
-                              ),
-                              prefixIcon: const Icon(
+                              hintStyle: TextStyle(color: inkSoft),
+                              prefixIcon: Icon(
                                 Icons.star_border_rounded,
-                                color: Color(0xFF94A3B8),
+                                color: inkSoft,
                                 size: 20,
                               ),
                               filled: true,
-                              fillColor: const Color(0xFF1E293B),
+                              fillColor: paperAlt,
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(color: rule),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(color: rule),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(color: cobalt),
                               ),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -513,6 +542,7 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                                 value: level,
                                 child: Text(
                                   level == "Any" ? "Any Level" : level,
+                                  style: TextStyle(color: ink),
                                 ),
                               );
                             }).toList(),
@@ -527,26 +557,32 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: _experienceYears,
-                            dropdownColor: const Color(0xFF1E293B),
-                            style: const TextStyle(
-                              color: Colors.white,
+                            dropdownColor: paperAlt,
+                            style: TextStyle(
+                              color: ink,
                               fontSize: 13,
                             ),
                             decoration: InputDecoration(
                               hintText: "Years",
-                              hintStyle: const TextStyle(
-                                color: Color(0xFF94A3B8),
-                              ),
-                              prefixIcon: const Icon(
+                              hintStyle: TextStyle(color: inkSoft),
+                              prefixIcon: Icon(
                                 Icons.timer_outlined,
-                                color: Color(0xFF94A3B8),
+                                color: inkSoft,
                                 size: 20,
                               ),
                               filled: true,
-                              fillColor: const Color(0xFF1E293B),
+                              fillColor: paperAlt,
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(color: rule),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(color: rule),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(4),
+                                borderSide: BorderSide(color: cobalt),
                               ),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -557,7 +593,8 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                               return DropdownMenuItem(
                                 value: year,
                                 child: Text(
-                                  year == "Any" ? "Any Years" : "$year Years",
+                                  year == "Any" ? "Any Years" : year,
+                                  style: TextStyle(color: ink),
                                 ),
                               );
                             }).toList(),
@@ -577,8 +614,8 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                         padding: const EdgeInsets.only(bottom: 16.0),
                         child: Text(
                           _errorMessage!,
-                          style: const TextStyle(
-                            color: Colors.amberAccent,
+                          style: TextStyle(
+                            color: AppColors.resolveOchre(isDark),
                             fontSize: 12,
                           ),
                         ),
@@ -586,41 +623,42 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
 
                     // Search Results (Show First)
                     if (_jobs.isNotEmpty || _isLoading) ...[
-                      const Row(
+                      Row(
                         children: [
                           Icon(
-                            Icons.list_alt_rounded,
-                            color: Color(0xFF6366F1),
-                            size: 20,
+                            Icons.folder_open_rounded,
+                            color: cobalt,
+                            size: 18,
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text(
-                            "Active Job Market Results",
+                            "ACTIVE JOB MARKET DOSSIERS",
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              color: ink,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       if (_jobs.isEmpty && _isLoading)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 40.0),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 40.0),
                           child: Center(
                             child: CircularProgressIndicator(
-                              color: Color(0xFF6366F1),
+                              color: cobalt,
                             ),
                           ),
                         )
                       else if (_jobs.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 40.0),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 40.0),
                           child: Center(
                             child: Text(
                               "No search results found. Try a different query.",
-                              style: TextStyle(color: Color(0xFF94A3B8)),
+                              style: TextStyle(color: inkSoft),
                             ),
                           ),
                         )
@@ -639,25 +677,26 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
 
                     // AI Recommendations
                     if (_recommendations.isNotEmpty && _jobs.isEmpty) ...[
-                      const Row(
+                      Row(
                         children: [
                           Icon(
-                            Icons.auto_awesome_rounded,
-                            color: Color(0xFF14B8A6),
-                            size: 20,
+                            Icons.verified_outlined,
+                            color: forest,
+                            size: 18,
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Text(
-                            "Recommended Job Matches",
+                            "RECOMMENDED JOB MATCHES",
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              color: ink,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),

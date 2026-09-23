@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/di/injection.dart';
+import 'package:frontend/features/auth/bloc/auth_bloc.dart';
+import 'package:frontend/features/auth/bloc/auth_event.dart';
+import 'package:frontend/core/theme/app_colors.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -25,6 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   
   String _activePlan = "Free Tier";
   bool _isPremium = false;
+  String _userEmail = "";
 
   @override
   void initState() {
@@ -61,6 +66,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _activePlan = data != null ? data['plan_name'] : "Free Tier";
           });
         }
+        setState(() {
+          _userEmail = data['email'] ?? '';
+        });
       }
     } catch (e) {
       setState(() {
@@ -71,6 +79,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  void _confirmLogout(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final ink = AppColors.resolveInk(isDark);
+    final inkSoft = AppColors.resolveInkMuted(isDark);
+    final brick = AppColors.resolveBrick(isDark);
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: paperAlt,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: rule),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.logout_rounded, color: brick, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              "CONFIRM SIGN OUT",
+              style: TextStyle(color: ink, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+            ),
+          ],
+        ),
+        content: Text(
+          "Are you sure you want to sign out of your account? You will need to authenticate again to access your dossiers.",
+          style: TextStyle(color: inkSoft, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: inkSoft,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              context.read<AuthBloc>().add(LogoutRequested());
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: brick,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: const Text("Sign Out", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _saveProfile() async {
@@ -91,18 +156,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'years_of_experience': int.tryParse(_experienceController.text) ?? 0,
       });
 
-      if (response.statusCode == 200 && response.data['success'] == true) {
+      if (response.statusCode == 200) {
         setState(() {
           _successMessage = "Profile updated successfully!";
-        });
-      } else {
-        setState(() {
-          _errorMessage = response.data['message'] ?? "Failed to save profile.";
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = "Error occurred saving profile. Try again.";
+        _errorMessage = "Failed to update profile. Please try again.";
       });
     } finally {
       setState(() {
@@ -112,38 +173,68 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _triggerUpgrade() async {
-    // Standard mock checkout checkout trigger for subscription plan
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final ink = AppColors.resolveInk(isDark);
+    final inkSoft = AppColors.resolveInkMuted(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final forest = AppColors.resolveForest(isDark);
+    final brick = AppColors.resolveBrick(isDark);
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          title: const Text("Upgrade to Premium Tier", style: TextStyle(color: Colors.white)),
-          content: const Column(
+          backgroundColor: paperAlt,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(4),
+            side: BorderSide(color: rule),
+          ),
+          title: Text(
+            "UPGRADE TO PREMIUM TIER",
+            style: TextStyle(color: ink, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+          ),
+          content: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Get unlimited resume uploads, advanced JSearch skill gap analytics, custom PDF exports, and simulated interview preps.",
-                style: TextStyle(color: Color(0xFFE2E8F0), fontSize: 13, height: 1.4),
+                "Unlock unlimited resume audits, advanced live market gap tracking, custom PDF dossier exports, and AI career path simulations.",
+                style: TextStyle(color: inkSoft, fontSize: 13, height: 1.4),
               ),
-              SizedBox(height: 16),
-              Text(
-                "Price: \$29 / month",
-                style: TextStyle(color: Color(0xFF14B8A6), fontSize: 16, fontWeight: FontWeight.bold),
-              )
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: forest.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: forest.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("SUBSCRIPTION FEE:", style: TextStyle(color: inkSoft, fontSize: 11, fontWeight: FontWeight.w700)),
+                    Text("\$29 / MONTH", style: TextStyle(color: forest, fontSize: 15, fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Close", style: TextStyle(color: Colors.white70)),
+              style: TextButton.styleFrom(
+                foregroundColor: inkSoft,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+              child: const Text("Close"),
             ),
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(context);
                 setState(() { _isLoading = true; });
                 try {
-                  // 1. Fetch available plans
                   final plansRes = await sl<ApiClient>().get('subscriptions/plans/');
                   if (plansRes.statusCode == 200 && plansRes.data['success'] == true) {
                     final plans = plansRes.data['data'] as List;
@@ -152,7 +243,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     }
                     final planId = plans.first['id'];
                     
-                    // 2. Create checkout session
                     final checkoutRes = await sl<ApiClient>().post('subscriptions/checkout/', data: {
                       'plan_id': planId
                     });
@@ -160,7 +250,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (checkoutRes.statusCode == 200 && checkoutRes.data['success'] == true) {
                       final orderId = checkoutRes.data['order_id'];
                       
-                      // 3. Verify payment to activate subscription
                       final verifyRes = await sl<ApiClient>().post('subscriptions/verify/', data: {
                         'razorpay_payment_id': 'pay_mock_${DateTime.now().millisecondsSinceEpoch}',
                         'razorpay_order_id': orderId,
@@ -170,7 +259,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       if (verifyRes.statusCode == 200 && verifyRes.data['success'] == true) {
                         _loadProfileData();
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Successfully upgraded to Premium!"), backgroundColor: Colors.green),
+                          SnackBar(content: const Text("Successfully upgraded to Premium!"), backgroundColor: forest),
                         );
                         return;
                       }
@@ -179,12 +268,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   throw Exception("Subscription checkout failed.");
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Checkout error: $e"), backgroundColor: Colors.redAccent),
+                    SnackBar(content: Text("Checkout error: $e"), backgroundColor: brick),
                   );
                   _loadProfileData();
                 }
               },
-              child: const Text("Subscribe"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: cobalt,
+                foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              ),
+              child: const Text("ACTIVATE TIER", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 0.4)),
             ),
           ],
         );
@@ -194,10 +289,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paper = AppColors.resolvePaper(isDark);
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final ink = AppColors.resolveInk(isDark);
+    final inkSoft = AppColors.resolveInkMuted(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final forest = AppColors.resolveForest(isDark);
+    final brick = AppColors.resolveBrick(isDark);
+
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: paper,
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
+          ? Center(child: CircularProgressIndicator(color: cobalt))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Form(
@@ -206,144 +311,237 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Profile Edit Card
-                    Card(
-                      color: const Color(0xCC1E293B),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "User Profile Details",
-                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: paperAlt,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: rule),
+                      ),
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.badge_outlined, size: 18, color: cobalt),
+                              const SizedBox(width: 8),
+                              Text(
+                                "DOSSIER PROFILE CONFIGURATION",
+                                style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _roleController,
+                            style: TextStyle(color: ink),
+                            decoration: InputDecoration(
+                              labelText: "Target/Current Role Title",
+                              labelStyle: TextStyle(color: inkSoft),
+                              prefixIcon: Icon(Icons.badge_rounded, color: inkSoft, size: 20),
                             ),
-                            const SizedBox(height: 20),
-                            TextFormField(
-                              controller: _roleController,
-                              decoration: const InputDecoration(
-                                labelText: "Target/Current Role Title",
-                                prefixIcon: Icon(Icons.badge_rounded),
-                              ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _experienceController,
+                            keyboardType: TextInputType.number,
+                            style: TextStyle(color: ink),
+                            decoration: InputDecoration(
+                              labelText: "Years of Experience",
+                              labelStyle: TextStyle(color: inkSoft),
+                              prefixIcon: Icon(Icons.timeline_rounded, color: inkSoft, size: 20),
                             ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _experienceController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: "Years of Experience",
-                                prefixIcon: Icon(Icons.timeline_rounded),
-                              ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _phoneController,
+                            style: TextStyle(color: ink),
+                            decoration: InputDecoration(
+                              labelText: "Phone Contact Number",
+                              labelStyle: TextStyle(color: inkSoft),
+                              prefixIcon: Icon(Icons.phone_rounded, color: inkSoft, size: 20),
                             ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _phoneController,
-                              decoration: const InputDecoration(
-                                labelText: "Phone Contact Number",
-                                prefixIcon: Icon(Icons.phone_rounded),
-                              ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _locationController,
+                            style: TextStyle(color: ink),
+                            decoration: InputDecoration(
+                              labelText: "Location / Country",
+                              labelStyle: TextStyle(color: inkSoft),
+                              prefixIcon: Icon(Icons.location_on_rounded, color: inkSoft, size: 20),
                             ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _locationController,
-                              decoration: const InputDecoration(
-                                labelText: "Location / Country",
-                                prefixIcon: Icon(Icons.location_on_rounded),
-                              ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _linkedinController,
+                            style: TextStyle(color: ink),
+                            decoration: InputDecoration(
+                              labelText: "LinkedIn Profile URL",
+                              labelStyle: TextStyle(color: inkSoft),
+                              prefixIcon: Icon(Icons.link_rounded, color: inkSoft, size: 20),
                             ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _linkedinController,
-                              decoration: const InputDecoration(
-                                labelText: "LinkedIn Profile URL",
-                                prefixIcon: Icon(Icons.link_rounded),
-                              ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _githubController,
+                            style: TextStyle(color: ink),
+                            decoration: InputDecoration(
+                              labelText: "GitHub Profile URL",
+                              labelStyle: TextStyle(color: inkSoft),
+                              prefixIcon: Icon(Icons.code_rounded, color: inkSoft, size: 20),
                             ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _githubController,
-                              decoration: const InputDecoration(
-                                labelText: "GitHub Profile URL",
-                                prefixIcon: Icon(Icons.code_rounded),
+                          ),
+                          const SizedBox(height: 24),
+                          if (_errorMessage != null)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 16.0),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: brick.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: brick.withValues(alpha: 0.3)),
                               ),
+                              child: Text(_errorMessage!, style: TextStyle(color: brick, fontSize: 12)),
                             ),
-                            const SizedBox(height: 24),
-                            if (_errorMessage != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 16.0),
-                                child: Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                          if (_successMessage != null)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 16.0),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: forest.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: forest.withValues(alpha: 0.3)),
                               ),
-                            if (_successMessage != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 16.0),
-                                child: Text(_successMessage!, style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
-                              ),
-                            _isSaving
-                                ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
-                                : Container(
-                                    width: double.infinity,
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      gradient: const LinearGradient(colors: [Color(0xFF6366F1), Color(0xFF14B8A6)]),
+                              child: Text(_successMessage!, style: TextStyle(color: forest, fontSize: 12)),
+                            ),
+                          _isSaving
+                              ? Center(child: CircularProgressIndicator(color: cobalt))
+                              : SizedBox(
+                                  width: double.infinity,
+                                  height: 44,
+                                  child: ElevatedButton(
+                                    onPressed: _saveProfile,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: cobalt,
+                                      foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                                     ),
-                                    child: ElevatedButton(
-                                      onPressed: _saveProfile,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.transparent,
-                                        shadowColor: Colors.transparent,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      ),
-                                      child: const Text("Save Settings Profile", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                    child: const Text(
+                                      "SAVE DOSSIER PROFILE",
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                                     ),
                                   ),
-                          ],
-                        ),
+                                ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
                     // Subscription Upgrade Card
-                    Card(
-                      color: const Color(0xCC1E293B),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text("Membership Subscription Plan", style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    _activePlan,
-                                    style: TextStyle(
-                                      color: _isPremium ? const Color(0xFF14B8A6) : Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: paperAlt,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: rule),
+                      ),
+                      padding: const EdgeInsets.all(24.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "MEMBERSHIP SUBSCRIPTION TIER",
+                                  style: TextStyle(color: inkSoft, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _activePlan,
+                                  style: TextStyle(
+                                    color: _isPremium ? forest : ink,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _isPremium ? "Unlocked full premium access" : "Upgrade to unlock advanced roadmaps and interview simulators",
-                                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                                  ),
-                                ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _isPremium
+                                      ? "Unlocked full premium tier dossier access"
+                                      : "Upgrade to unlock advanced roadmaps and interview simulators",
+                                  style: TextStyle(color: inkSoft, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (!_isPremium)
+                            ElevatedButton(
+                              onPressed: _triggerUpgrade,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: cobalt,
+                                foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              ),
+                              child: const Text(
+                                "UPGRADE",
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                               ),
                             ),
-                            if (!_isPremium)
-                              ElevatedButton(
-                                onPressed: _triggerUpgrade,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF14B8A6),
-                                  foregroundColor: Colors.white,
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Account & Security / Logout Card
+                    Container(
+                      decoration: BoxDecoration(
+                        color: paperAlt,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: rule),
+                      ),
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "SESSION & SECURITY CREDENTIALS",
+                            style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _userEmail.isNotEmpty
+                                ? "Authenticated as $_userEmail"
+                                : "Manage your active session and authentication.",
+                            style: TextStyle(color: inkSoft, fontSize: 12),
+                          ),
+                          const SizedBox(height: 18),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 44,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _confirmLogout(context),
+                              icon: Icon(Icons.logout_rounded, color: brick, size: 16),
+                              label: Text(
+                                "SIGN OUT OF DOSSIER",
+                                style: TextStyle(
+                                  color: brick,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                  letterSpacing: 0.5,
                                 ),
-                                child: const Text("Upgrade"),
                               ),
-                          ],
-                        ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: brick.withValues(alpha: 0.5)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                backgroundColor: brick.withValues(alpha: 0.08),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],

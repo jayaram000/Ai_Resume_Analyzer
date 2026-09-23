@@ -88,11 +88,31 @@ class ActiveSubscriptionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        try:
-            sub = UserSubscription.objects.filter(
-                user=request.user, 
-                status=UserSubscription.Status.ACTIVE
-            ).latest('start_date')
+        from django.utils import timezone
+        now = timezone.now()
+
+        # Check active paid subscription
+        sub = UserSubscription.objects.filter(
+            user=request.user, 
+            status=UserSubscription.Status.ACTIVE,
+            start_date__lte=now,
+            end_date__gte=now
+        ).exclude(plan__price=0).order_by('-start_date').first()
+
+        if sub:
             return Response({"success": True, "data": UserSubscriptionSerializer(sub).data})
-        except UserSubscription.DoesNotExist:
-            return Response({"success": True, "data": None})
+
+        # Staff/Admins have VIP access
+        if request.user.is_superuser or request.user.is_staff or getattr(request.user, 'role', 'USER') == 'ADMIN':
+            return Response({
+                "success": True,
+                "data": {
+                    "id": "vip-admin",
+                    "plan_name": "Admin VIP Tier",
+                    "status": "active",
+                    "start_date": now.isoformat(),
+                    "end_date": (now + timezone.timedelta(days=3650)).isoformat(),
+                }
+            })
+
+        return Response({"success": True, "data": None})

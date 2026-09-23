@@ -22,22 +22,32 @@ from analysis.serializers import (
     ProjectRecommendationInputSerializer,
     CoverLetterInputSerializer
 )
-from analysis.services import (
-    generate_ats_analysis,
-    generate_resume_improvements,
+from analysis.services.ats_scoring_service import generate_ats_analysis
+from analysis.services.bullet_rewrite_service import generate_resume_improvements
+from analysis.services.skills_analysis_service import (
     generate_position_analysis,
     generate_jd_match,
+    JDMatchingService,
+)
+from analysis.services.skill_gap_service import (
     generate_skill_gap,
-    generate_career_roadmap,
-    generate_interview_prep,
-    generate_project_recommendation,
-    generate_cover_letter,
     AdvancedSkillGapService,
+)
+from analysis.services.roadmap_service import (
+    generate_career_roadmap,
     CareerRoadmapService,
+)
+from analysis.services.interview_service import (
+    generate_interview_prep,
     InterviewSimulationService,
-    CoverLetterService,
+)
+from analysis.services.project_recommendation_service import (
+    generate_project_recommendation,
     ProjectRecommendationService,
-    JDMatchingService
+)
+from analysis.services.cover_letter_service import (
+    generate_cover_letter,
+    CoverLetterService,
 )
 
 

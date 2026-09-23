@@ -4,7 +4,8 @@ import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/utils/file_downloader.dart';
 import 'package:frontend/features/roadmap/data/roadmap_clean.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:dio/dio.dart';
+import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/widgets/premium_plan_paywall.dart';
 
 class CareerRoadmapScreen extends StatefulWidget {
   const CareerRoadmapScreen({super.key});
@@ -44,20 +45,25 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
   }
 
   Future<void> _deleteRoadmap(String id) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text("Delete Roadmap", style: TextStyle(color: Colors.white)),
-        content: const Text("Are you sure you want to delete this roadmap?", style: TextStyle(color: Color(0xFF94A3B8))),
+        backgroundColor: AppColors.resolvePaperAlt(isDark),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: AppColors.resolveRule(isDark)),
+        ),
+        title: Text("Delete Roadmap", style: TextStyle(color: AppColors.resolveInk(isDark))),
+        content: Text("Are you sure you want to delete this roadmap?", style: TextStyle(color: AppColors.resolveInkSoft(isDark))),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text("Cancel", style: TextStyle(color: Color(0xFF94A3B8))),
+            child: Text("Cancel", style: TextStyle(color: AppColors.resolveInkSoft(isDark))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("Delete", style: TextStyle(color: Colors.redAccent)),
+            child: Text("Delete", style: TextStyle(color: AppColors.resolveBrick(isDark))),
           ),
         ],
       ),
@@ -77,19 +83,17 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
     if (roadmapId == null) return;
 
     try {
-      final target = (_roadmapData?['target_role'] ?? 'Roadmap').toString();
-      final fileName = 'Career_Roadmap_${target.replaceAll(" ", "_")}.pdf';
+      final fileName = 'Career_Roadmap_${_targetController.text.trim().replaceAll(" ", "_")}.pdf';
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Generating & downloading professional Roadmap PDF...')),
+          const SnackBar(content: Text('Generating & downloading professional PDF...')),
         );
       }
 
       final apiClient = sl<ApiClient>();
       final response = await apiClient.get(
         'analysis/roadmap/$roadmapId/pdf/',
-        options: Options(responseType: ResponseType.bytes),
       );
 
       final bytes = (response.data is List<int>) ? (response.data as List<int>) : List<int>.from(response.data);
@@ -98,18 +102,18 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
       if (mounted) {
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('✔ $fileName downloaded successfully!'), backgroundColor: const Color(0xFF22C55E)),
+            SnackBar(content: Text('✔ $fileName downloaded successfully!'), backgroundColor: AppColors.success),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to save PDF file.'), backgroundColor: Colors.redAccent),
+            const SnackBar(content: Text('Failed to save PDF file.'), backgroundColor: AppColors.error),
           );
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to download PDF: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text('Failed to download PDF: $e'), backgroundColor: AppColors.error),
         );
       }
     }
@@ -173,47 +177,55 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
   }
 
   void _showInfoDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final ink = AppColors.resolveInk(isDark);
+    final inkSoft = AppColors.resolveInkSoft(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final forest = AppColors.resolveForest(isDark);
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        backgroundColor: paperAlt,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4), side: BorderSide(color: rule)),
+        title: Row(
           children: [
-            Icon(Icons.alt_route_rounded, color: Color(0xFF14B8A6)),
-            SizedBox(width: 10),
-            Text("About Career Roadmap", style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+            Icon(Icons.alt_route_rounded, color: cobalt),
+            const SizedBox(width: 10),
+            Text("About Career Roadmap", style: TextStyle(color: ink, fontSize: 17, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               "🗺️ What is Career Roadmap?",
-              style: TextStyle(color: Color(0xFF14B8A6), fontWeight: FontWeight.bold, fontSize: 13),
+              style: TextStyle(color: forest, fontWeight: FontWeight.bold, fontSize: 13),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               "Career Roadmap is a high-level educational curriculum and milestone guide that charts a step-by-step career path. You can generate a full mastery blueprint for any target role, or calculate a transition path from your current position.",
-              style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 12, height: 1.4),
+              style: TextStyle(color: inkSoft, fontSize: 12, height: 1.4),
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
               "📚 What you get:",
-              style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold, fontSize: 13),
+              style: TextStyle(color: cobalt, fontWeight: FontWeight.bold, fontSize: 13),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(
               "• Target Technology Stack & Top Certifications\n• Step-by-Step Transition Phases & Milestones\n• Production Portfolio Projects with tech stacks\n• Top YouTube Channels & Video Masterclasses\n• Official Documentation Portals (GeeksforGeeks, MDN, DevDocs)\n• Popular Online Courses (Udemy, Coursera, freeCodeCamp)\n• Executive Exportable PDF Report",
-              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12, height: 1.5),
+              style: TextStyle(color: inkSoft, fontSize: 12, height: 1.5),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Got It", style: TextStyle(color: Color(0xFF14B8A6), fontWeight: FontWeight.bold)),
+            child: Text("Got It", style: TextStyle(color: cobalt, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -299,9 +311,15 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+    final paper = AppColors.resolvePaper(isDark);
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final textPrimary = AppColors.resolveInk(isDark);
+    final textSecondary = AppColors.resolveInkSoft(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final forest = AppColors.resolveForest(isDark);
+    final ochre = AppColors.resolveOchre(isDark);
+    final brick = AppColors.resolveBrick(isDark);
 
     final List techList = _roadmapData != null ? ((_roadmapData!['technologies'] as List?) ?? []) : [];
     final List certList = _roadmapData != null ? ((_roadmapData!['certifications'] as List?) ?? []) : [];
@@ -355,9 +373,9 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
             Container(
               padding: const EdgeInsets.all(20.0),
               decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: borderColor),
+                color: paperAlt,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: rule),
               ),
               child: Column(
                 children: [
@@ -371,7 +389,7 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                       const SizedBox(width: 8),
                       IconButton(
                         onPressed: _showInfoDialog,
-                        icon: const Icon(Icons.info_outline_rounded, color: Color(0xFF14B8A6), size: 20),
+                        icon: Icon(Icons.info_outline_rounded, color: cobalt, size: 20),
                         tooltip: "What is Career Roadmap?",
                         constraints: const BoxConstraints(),
                         padding: EdgeInsets.zero,
@@ -379,9 +397,9 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     "Generate a complete learning curriculum, project blueprints, YouTube tutorials, documentation portals, and certification guides for any target tech position.",
-                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                    style: TextStyle(color: textSecondary, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 20),
@@ -396,9 +414,11 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                         onSelected: (val) {
                           if (val) setState(() => _showCurrentRoleField = false);
                         },
-                        selectedColor: const Color(0xFF14B8A6).withValues(alpha: 0.2),
+                        selectedColor: cobalt.withValues(alpha: 0.15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        side: BorderSide(color: !_showCurrentRoleField ? cobalt : rule),
                         labelStyle: TextStyle(
-                          color: !_showCurrentRoleField ? const Color(0xFF14B8A6) : const Color(0xFF94A3B8),
+                          color: !_showCurrentRoleField ? cobalt : textSecondary,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -410,9 +430,11 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                         onSelected: (val) {
                           if (val) setState(() => _showCurrentRoleField = true);
                         },
-                        selectedColor: const Color(0xFF6366F1).withValues(alpha: 0.2),
+                        selectedColor: cobalt.withValues(alpha: 0.15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        side: BorderSide(color: _showCurrentRoleField ? cobalt : rule),
                         labelStyle: TextStyle(
-                          color: _showCurrentRoleField ? const Color(0xFF6366F1) : const Color(0xFF94A3B8),
+                          color: _showCurrentRoleField ? cobalt : textSecondary,
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -430,11 +452,16 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                             style: TextStyle(color: textPrimary),
                             decoration: InputDecoration(
                               labelText: "Current Role",
+                              labelStyle: TextStyle(color: textSecondary),
                               hintText: "e.g. Junior Developer, Student",
-                              prefixIcon: const Icon(Icons.person_outline_rounded, color: Color(0xFF6366F1)),
+                              hintStyle: TextStyle(color: textSecondary),
+                              prefixIcon: Icon(Icons.person_outline_rounded, color: cobalt),
                               filled: true,
-                              fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              fillColor: paper,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: rule)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: rule)),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: cobalt, width: 1.5)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                             ),
                           ),
                         ),
@@ -446,11 +473,16 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                           style: TextStyle(color: textPrimary),
                           decoration: InputDecoration(
                             labelText: "Target Role *",
+                            labelStyle: TextStyle(color: textSecondary),
                             hintText: "e.g. Backend Architect, DevOps Engineer, Data Scientist",
-                            prefixIcon: const Icon(Icons.rocket_launch_rounded, color: Color(0xFF14B8A6)),
+                            hintStyle: TextStyle(color: textSecondary),
+                            prefixIcon: Icon(Icons.rocket_launch_rounded, color: cobalt),
                             filled: true,
-                            fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                            fillColor: paper,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: rule)),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: rule)),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: cobalt, width: 1.5)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           ),
                         ),
                       ),
@@ -458,22 +490,23 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                   ),
                   const SizedBox(height: 20),
                   _isLoading
-                      ? const CircularProgressIndicator(color: Color(0xFF14B8A6))
-                      : Container(
-                          height: 46,
+                      ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(color: cobalt, strokeWidth: 2),
+                        )
+                      : SizedBox(
+                          height: 48,
                           width: 220,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: const LinearGradient(colors: [Color(0xFF14B8A6), Color(0xFF6366F1)]),
-                          ),
                           child: ElevatedButton.icon(
                             onPressed: _generateRoadmap,
-                            icon: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
-                            label: const Text("Generate Roadmap", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                            label: const Text("Generate Roadmap", style: TextStyle(fontWeight: FontWeight.bold)),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              backgroundColor: cobalt,
+                              foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                             ),
                           ),
                         ),
@@ -489,13 +522,13 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.history_rounded, color: Color(0xFF14B8A6), size: 18),
+                      Icon(Icons.history_rounded, color: cobalt, size: 18),
                       const SizedBox(width: 8),
                       Text("Recent Saved Roadmaps (${_recentRoadmaps.length})", style: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   if (_isLoadingHistory)
-                    const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF14B8A6))),
+                    SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: cobalt)),
                 ],
               ),
               const SizedBox(height: 10),
@@ -514,22 +547,22 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                       margin: const EdgeInsets.only(right: 10),
                       child: InkWell(
                         onTap: () => _displayRoadmapEntity(item),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(4),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? const Color(0xFF14B8A6).withValues(alpha: 0.2)
-                                : (isDark ? const Color(0xFF1E293B) : Colors.white),
-                            borderRadius: BorderRadius.circular(12),
+                                ? cobalt.withValues(alpha: 0.15)
+                                : paperAlt,
+                            borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color: isSelected ? const Color(0xFF14B8A6) : borderColor,
+                              color: isSelected ? cobalt : rule,
                               width: isSelected ? 1.5 : 1,
                             ),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.alt_route_rounded, color: Color(0xFF14B8A6), size: 16),
+                              Icon(Icons.alt_route_rounded, color: cobalt, size: 16),
                               const SizedBox(width: 8),
                               Text(
                                 title,
@@ -544,7 +577,7 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                 onTap: () {
                                   if (item.id != null) _deleteRoadmap(item.id!);
                                 },
-                                child: const Icon(Icons.close, size: 14, color: Color(0xFF94A3B8)),
+                                child: Icon(Icons.close, size: 14, color: textSecondary),
                               ),
                             ],
                           ),
@@ -557,19 +590,78 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
               const SizedBox(height: 20),
             ],
 
-            if (_errorMessage != null)
-              Container(
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.only(bottom: 24),
-                decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.redAccent)),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error_outline, color: Colors.redAccent),
-                    const SizedBox(width: 12),
-                    Expanded(child: Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent))),
-                  ],
+            if (_errorMessage != null) ...[
+              if (_errorMessage!.toLowerCase().contains('premium') || _errorMessage!.contains('403'))
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: paperAlt,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: ochre.withValues(alpha: 0.6)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: ochre.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: ochre.withValues(alpha: 0.3)),
+                        ),
+                        child: Icon(Icons.workspace_premium_rounded, color: ochre, size: 28),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Pro Subscription Required",
+                              style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _errorMessage!,
+                              style: TextStyle(color: textSecondary, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton.icon(
+                        onPressed: () => PremiumPlanPaywall.showAsDialog(context),
+                        icon: const Icon(Icons.stars_rounded, size: 18),
+                        label: const Text("View Plans & Upgrade"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: cobalt,
+                          foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: brick.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: brick.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: brick),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(_errorMessage!, style: TextStyle(color: brick))),
+                    ],
+                  ),
                 ),
-              ),
+            ],
 
             if (_roadmapData != null) ...[
               // Header Card with Export PDF
@@ -577,19 +669,20 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                 padding: const EdgeInsets.all(20),
                 margin: const EdgeInsets.only(bottom: 24),
                 decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: borderColor),
+                  color: paperAlt,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: rule),
                 ),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF14B8A6).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
+                        color: cobalt.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: cobalt.withValues(alpha: 0.3)),
                       ),
-                      child: const Icon(Icons.map_rounded, color: Color(0xFF14B8A6), size: 28),
+                      child: Icon(Icons.map_rounded, color: cobalt, size: 28),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -598,17 +691,19 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                         children: [
                           Text(displayTitle, style: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 4),
-                          const Text("Comprehensive Career Transition & Mastery Blueprint", style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                          Text("Comprehensive Career Transition & Mastery Blueprint", style: TextStyle(color: textSecondary, fontSize: 13)),
                         ],
                       ),
                     ),
                     ElevatedButton.icon(
                       onPressed: _downloadPdf,
-                      icon: const Icon(Icons.picture_as_pdf_rounded, size: 16, color: Colors.white),
-                      label: const Text("Export PDF", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                      icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
+                      label: const Text("Export PDF", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE11D48),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        backgroundColor: brick,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       ),
                     ),
@@ -625,18 +720,18 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: cardBg,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: borderColor),
+                          color: paperAlt,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: rule),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
-                                Icon(Icons.terminal_rounded, color: Color(0xFF14B8A6), size: 20),
-                                SizedBox(width: 8),
-                                Text("Target Tech Stack", style: TextStyle(color: Color(0xFF14B8A6), fontSize: 15, fontWeight: FontWeight.bold)),
+                                Icon(Icons.terminal_rounded, color: cobalt, size: 20),
+                                const SizedBox(width: 8),
+                                Text("Target Tech Stack", style: TextStyle(color: cobalt, fontSize: 15, fontWeight: FontWeight.bold)),
                               ],
                             ),
                             const SizedBox(height: 12),
@@ -645,9 +740,10 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                               runSpacing: 8,
                               children: techList.map<Widget>((tech) {
                                 return Chip(
-                                  label: Text(tech.toString(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                                  backgroundColor: const Color(0xFF14B8A6).withValues(alpha: 0.2),
-                                  side: const BorderSide(color: Color(0xFF14B8A6)),
+                                  label: Text(tech.toString(), style: TextStyle(color: cobalt, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
+                                  backgroundColor: cobalt.withValues(alpha: 0.12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                  side: BorderSide(color: cobalt.withValues(alpha: 0.3)),
                                 );
                               }).toList(),
                             ),
@@ -661,18 +757,18 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: cardBg,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: borderColor),
+                          color: paperAlt,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: rule),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
-                                Icon(Icons.workspace_premium_rounded, color: Color(0xFFF59E0B), size: 20),
-                                SizedBox(width: 8),
-                                Text("Recommended Certifications", style: TextStyle(color: Color(0xFFF59E0B), fontSize: 15, fontWeight: FontWeight.bold)),
+                                Icon(Icons.workspace_premium_rounded, color: ochre, size: 20),
+                                const SizedBox(width: 8),
+                                Text("Recommended Certifications", style: TextStyle(color: ochre, fontSize: 15, fontWeight: FontWeight.bold)),
                               ],
                             ),
                             const SizedBox(height: 12),
@@ -681,8 +777,10 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                               runSpacing: 8,
                               children: certList.map<Widget>((cert) {
                                 return Chip(
-                                  label: Text(cert.toString(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                                  backgroundColor: const Color(0xFFF59E0B).withValues(alpha: 0.8),
+                                  label: Text(cert.toString(), style: TextStyle(color: ochre, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  backgroundColor: ochre.withValues(alpha: 0.12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                  side: BorderSide(color: ochre.withValues(alpha: 0.3)),
                                 );
                               }).toList(),
                             ),
@@ -697,7 +795,7 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
               // Step by step phases
               Row(
                 children: [
-                  const Icon(Icons.route_rounded, color: Color(0xFF6366F1), size: 20),
+                  Icon(Icons.route_rounded, color: cobalt, size: 20),
                   const SizedBox(width: 8),
                   Text("Step-by-Step Transition Phases", style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
                 ],
@@ -720,9 +818,9 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                     margin: const EdgeInsets.only(bottom: 16),
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: borderColor),
+                      color: paperAlt,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: rule),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -730,12 +828,13 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.all(8),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
+                                color: cobalt.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: cobalt.withValues(alpha: 0.3)),
                               ),
-                              child: Text("${index + 1}", style: const TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
+                              child: Text("${index + 1}", style: TextStyle(color: cobalt, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -745,7 +844,7 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                         ),
                         if (guidance != null && guidance.isNotEmpty) ...[
                           const SizedBox(height: 8),
-                          Text("Guidance: $guidance", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5, fontStyle: FontStyle.italic)),
+                          Text("Guidance: $guidance", style: TextStyle(color: textSecondary, fontSize: 12.5, fontStyle: FontStyle.italic)),
                         ],
                         if (milestones.isNotEmpty) ...[
                           const SizedBox(height: 12),
@@ -754,13 +853,13 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(top: 4.0),
-                                  child: Icon(Icons.circle, color: Color(0xFF14B8A6), size: 6),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6.0),
+                                  child: Icon(Icons.circle, color: cobalt, size: 5),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: Text(m.toString(), style: TextStyle(color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF475569), fontSize: 13)),
+                                  child: Text(m.toString(), style: TextStyle(color: textPrimary, fontSize: 13)),
                                 ),
                               ],
                             ),
@@ -777,7 +876,7 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
               if (projectList.isNotEmpty) ...[
                 Row(
                   children: [
-                    const Icon(Icons.code_rounded, color: Color(0xFF14B8A6), size: 20),
+                    Icon(Icons.code_rounded, color: cobalt, size: 20),
                     const SizedBox(width: 8),
                     Text("Hands-On Production Portfolio Projects", style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
@@ -793,29 +892,29 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                     margin: const EdgeInsets.only(bottom: 16),
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: cardBg,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF14B8A6).withValues(alpha: 0.3)),
+                      color: paperAlt,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: rule),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.rocket_launch_rounded, color: Color(0xFF14B8A6), size: 18),
+                            Icon(Icons.rocket_launch_rounded, color: cobalt, size: 18),
                             const SizedBox(width: 8),
                             Expanded(child: Text(pTitle.toString(), style: TextStyle(color: textPrimary, fontSize: 15, fontWeight: FontWeight.bold))),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(pDesc.toString(), style: TextStyle(color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569), fontSize: 13)),
+                        Text(pDesc.toString(), style: TextStyle(color: textSecondary, fontSize: 13)),
                         if (pStack.isNotEmpty) ...[
                           const SizedBox(height: 10),
-                          Text("Tech Stack: $pStack", style: const TextStyle(color: Color(0xFF14B8A6), fontSize: 12, fontWeight: FontWeight.bold)),
+                          Text("Tech Stack: $pStack", style: TextStyle(color: cobalt, fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
                         ],
                         if (pOutcome.isNotEmpty) ...[
                           const SizedBox(height: 4),
-                          Text("Proof of Competence: $pOutcome", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontStyle: FontStyle.italic)),
+                          Text("Proof of Competence: $pOutcome", style: TextStyle(color: textSecondary, fontSize: 12, fontStyle: FontStyle.italic)),
                         ],
                       ],
                     ),
@@ -834,18 +933,18 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: cardBg,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: borderColor),
+                            color: paperAlt,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: rule),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Row(
+                              Row(
                                 children: [
-                                  Icon(Icons.play_circle_fill_rounded, color: Color(0xFFE11D48), size: 20),
-                                  SizedBox(width: 8),
-                                  Text("Curated Video Masterclasses", style: TextStyle(color: Color(0xFFE11D48), fontSize: 15, fontWeight: FontWeight.bold)),
+                                  Icon(Icons.play_circle_fill_rounded, color: brick, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text("Curated Video Masterclasses", style: TextStyle(color: brick, fontSize: 15, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                               const SizedBox(height: 14),
@@ -857,24 +956,24 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                   margin: const EdgeInsets.only(bottom: 12),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: borderColor),
+                                    color: paper,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: rule),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(vTitle.toString(), style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 4),
-                                      Text("Channel: $vChan", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                                      Text("Channel: $vChan", style: TextStyle(color: textSecondary, fontSize: 11)),
                                       const SizedBox(height: 8),
                                       InkWell(
                                         onTap: () => _openCourseUrl(vUrl.toString(), "YouTube", vTitle.toString()),
-                                        child: const Row(
+                                        child: Row(
                                           children: [
-                                            Icon(Icons.open_in_new_rounded, size: 13, color: Color(0xFFE11D48)),
-                                            SizedBox(width: 4),
-                                            Text("Watch Tutorial", style: TextStyle(color: Color(0xFFE11D48), fontSize: 12, fontWeight: FontWeight.bold)),
+                                            Icon(Icons.open_in_new_rounded, size: 13, color: brick),
+                                            const SizedBox(width: 4),
+                                            Text("Watch Tutorial", style: TextStyle(color: brick, fontSize: 12, fontWeight: FontWeight.bold)),
                                           ],
                                         ),
                                       ),
@@ -892,18 +991,18 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: cardBg,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: borderColor),
+                            color: paperAlt,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: rule),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Row(
+                              Row(
                                 children: [
-                                  Icon(Icons.tv_rounded, color: Color(0xFFE11D48), size: 20),
-                                  SizedBox(width: 8),
-                                  Text("Top YouTube Channels", style: TextStyle(color: Color(0xFFE11D48), fontSize: 15, fontWeight: FontWeight.bold)),
+                                  Icon(Icons.tv_rounded, color: brick, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text("Top YouTube Channels", style: TextStyle(color: brick, fontSize: 15, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                               const SizedBox(height: 14),
@@ -915,9 +1014,9 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                   margin: const EdgeInsets.only(bottom: 12),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: borderColor),
+                                    color: paper,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: rule),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -925,16 +1024,16 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                       Text(chName.toString(), style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
                                       if (chFocus.isNotEmpty) ...[
                                         const SizedBox(height: 4),
-                                        Text(chFocus.toString(), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                                        Text(chFocus.toString(), style: TextStyle(color: textSecondary, fontSize: 11)),
                                       ],
                                       const SizedBox(height: 8),
                                       InkWell(
                                         onTap: () => _openCourseUrl(chUrl.toString(), "YouTube", chName.toString()),
-                                        child: const Row(
+                                        child: Row(
                                           children: [
-                                            Icon(Icons.open_in_new_rounded, size: 13, color: Color(0xFFE11D48)),
-                                            SizedBox(width: 4),
-                                            Text("Visit Channel", style: TextStyle(color: Color(0xFFE11D48), fontSize: 12, fontWeight: FontWeight.bold)),
+                                            Icon(Icons.open_in_new_rounded, size: 13, color: brick),
+                                            const SizedBox(width: 4),
+                                            Text("Visit Channel", style: TextStyle(color: brick, fontSize: 12, fontWeight: FontWeight.bold)),
                                           ],
                                         ),
                                       ),
@@ -961,18 +1060,18 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: cardBg,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: borderColor),
+                            color: paperAlt,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: rule),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Row(
+                              Row(
                                 children: [
-                                  Icon(Icons.menu_book_rounded, color: Color(0xFF14B8A6), size: 20),
-                                  SizedBox(width: 8),
-                                  Text("Documentation & Technical Portals", style: TextStyle(color: Color(0xFF14B8A6), fontSize: 15, fontWeight: FontWeight.bold)),
+                                  Icon(Icons.menu_book_rounded, color: cobalt, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text("Documentation & Technical Portals", style: TextStyle(color: cobalt, fontSize: 15, fontWeight: FontWeight.bold)),
                                 ],
                               ),
                               const SizedBox(height: 14),
@@ -985,9 +1084,9 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                   margin: const EdgeInsets.only(bottom: 12),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: borderColor),
+                                    color: paper,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(color: rule),
                                   ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1007,26 +1106,27 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                               decoration: BoxDecoration(
-                                                color: const Color(0xFF14B8A6).withValues(alpha: 0.15),
-                                                borderRadius: BorderRadius.circular(6),
+                                                color: cobalt.withValues(alpha: 0.12),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(color: cobalt.withValues(alpha: 0.3)),
                                               ),
-                                              child: Text(dCategory.toString(), style: const TextStyle(color: Color(0xFF14B8A6), fontSize: 10, fontWeight: FontWeight.bold)),
+                                              child: Text(dCategory.toString(), style: TextStyle(color: cobalt, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
                                             ),
                                           ],
                                         ],
                                       ),
                                       if (dDesc.isNotEmpty) ...[
                                         const SizedBox(height: 4),
-                                        Text(dDesc.toString(), style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
+                                        Text(dDesc.toString(), style: TextStyle(color: textSecondary, fontSize: 11)),
                                       ],
                                       const SizedBox(height: 8),
                                       InkWell(
                                         onTap: () => _openDocUrl(dUrl.toString(), dName.toString()),
-                                        child: const Row(
+                                        child: Row(
                                           children: [
-                                            Icon(Icons.open_in_new_rounded, size: 13, color: Color(0xFF14B8A6)),
-                                            SizedBox(width: 4),
-                                            Text("Open Documentation", style: TextStyle(color: Color(0xFF14B8A6), fontSize: 12, fontWeight: FontWeight.bold)),
+                                            Icon(Icons.open_in_new_rounded, size: 13, color: cobalt),
+                                            const SizedBox(width: 4),
+                                            Text("Open Documentation", style: TextStyle(color: cobalt, fontSize: 12, fontWeight: FontWeight.bold)),
                                           ],
                                         ),
                                       ),
@@ -1044,19 +1144,19 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: cardBg,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: borderColor),
+                            color: paperAlt,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: rule),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               if (popularCourseList.isNotEmpty) ...[
-                                const Row(
+                                Row(
                                   children: [
-                                    Icon(Icons.school_rounded, color: Color(0xFF6366F1), size: 20),
-                                    SizedBox(width: 8),
-                                    Text("Popular Online Courses", style: TextStyle(color: Color(0xFF6366F1), fontSize: 15, fontWeight: FontWeight.bold)),
+                                    Icon(Icons.school_rounded, color: cobalt, size: 20),
+                                    const SizedBox(width: 8),
+                                    Text("Popular Online Courses", style: TextStyle(color: cobalt, fontSize: 15, fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                                 const SizedBox(height: 14),
@@ -1068,9 +1168,9 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                     margin: const EdgeInsets.only(bottom: 12),
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: borderColor),
+                                      color: paper,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: rule),
                                     ),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1080,10 +1180,11 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                               decoration: BoxDecoration(
-                                                color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                                                borderRadius: BorderRadius.circular(6),
+                                                color: cobalt.withValues(alpha: 0.12),
+                                                borderRadius: BorderRadius.circular(4),
+                                                border: Border.all(color: cobalt.withValues(alpha: 0.3)),
                                               ),
-                                              child: Text(cPlat.toString(), style: const TextStyle(color: Color(0xFF6366F1), fontSize: 10, fontWeight: FontWeight.bold)),
+                                              child: Text(cPlat.toString(), style: TextStyle(color: cobalt, fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'JetBrains Mono')),
                                             ),
                                           ],
                                         ),
@@ -1092,11 +1193,11 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                         const SizedBox(height: 8),
                                         InkWell(
                                           onTap: () => _openCourseUrl(cUrl.toString(), cPlat.toString(), cName.toString()),
-                                          child: const Row(
+                                          child: Row(
                                             children: [
-                                              Icon(Icons.open_in_new_rounded, size: 13, color: Color(0xFF6366F1)),
-                                              SizedBox(width: 4),
-                                              Text("View Direct Course", style: TextStyle(color: Color(0xFF6366F1), fontSize: 12, fontWeight: FontWeight.bold)),
+                                              Icon(Icons.open_in_new_rounded, size: 13, color: cobalt),
+                                              const SizedBox(width: 4),
+                                              Text("View Direct Course", style: TextStyle(color: cobalt, fontSize: 12, fontWeight: FontWeight.bold)),
                                             ],
                                           ),
                                         ),
@@ -1106,12 +1207,12 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                 }),
                               ],
                               if (freeCourseList.isNotEmpty) ...[
-                                if (popularCourseList.isNotEmpty) const Divider(height: 28),
-                                const Row(
+                                if (popularCourseList.isNotEmpty) Divider(height: 28, color: rule),
+                                Row(
                                   children: [
-                                    Text("🌱", style: TextStyle(fontSize: 16)),
-                                    SizedBox(width: 8),
-                                    Text("Free Learning Platforms", style: TextStyle(color: Color(0xFF14B8A6), fontSize: 15, fontWeight: FontWeight.bold)),
+                                    Icon(Icons.eco_rounded, color: forest, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text("Free Learning Platforms", style: TextStyle(color: forest, fontSize: 15, fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                                 const SizedBox(height: 12),
@@ -1123,16 +1224,16 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                     margin: const EdgeInsets.only(bottom: 10),
                                     padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
-                                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF0FDF4),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: const Color(0xFF14B8A6).withValues(alpha: 0.3)),
+                                      color: paper,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: forest.withValues(alpha: 0.3)),
                                     ),
                                     child: Row(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Padding(
-                                          padding: EdgeInsets.only(top: 2.0),
-                                          child: Icon(Icons.check_circle_rounded, color: Color(0xFF14B8A6), size: 16),
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 2.0),
+                                          child: Icon(Icons.check_circle_rounded, color: forest, size: 16),
                                         ),
                                         const SizedBox(width: 8),
                                         Expanded(
@@ -1150,11 +1251,11 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                               const SizedBox(height: 4),
                                               InkWell(
                                                 onTap: () => _openCourseUrl(fcUrl.toString(), fcPlat.toString(), fcName.toString()),
-                                                child: const Row(
+                                                child: Row(
                                                   children: [
-                                                    Icon(Icons.open_in_new_rounded, size: 12, color: Color(0xFF14B8A6)),
-                                                    SizedBox(width: 4),
-                                                    Text("Open Free Course", style: TextStyle(color: Color(0xFF14B8A6), fontSize: 11, fontWeight: FontWeight.bold)),
+                                                    Icon(Icons.open_in_new_rounded, size: 12, color: forest),
+                                                    const SizedBox(width: 4),
+                                                    Text("Open Free Course", style: TextStyle(color: forest, fontSize: 11, fontWeight: FontWeight.bold)),
                                                   ],
                                                 ),
                                               ),
@@ -1180,11 +1281,11 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                 child: Center(
                   child: Column(
                     children: [
-                      Icon(Icons.alt_route_rounded, size: 64, color: const Color(0xFF14B8A6).withValues(alpha: 0.5)),
+                      Icon(Icons.alt_route_rounded, size: 64, color: cobalt.withValues(alpha: 0.4)),
                       const SizedBox(height: 16),
                       Text(
                         "Enter your target role or select a transition mode above to generate your customized roadmap.",
-                        style: TextStyle(color: textPrimary.withValues(alpha: 0.6), fontSize: 14),
+                        style: TextStyle(color: textSecondary, fontSize: 14),
                         textAlign: TextAlign.center,
                       ),
                     ],

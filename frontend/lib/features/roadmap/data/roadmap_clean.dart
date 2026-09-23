@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/usecases/usecase.dart';
 import 'package:frontend/core/error/failures.dart';
@@ -187,6 +188,17 @@ class RoadmapRemoteDataSourceImpl implements RoadmapRemoteDataSource {
         return RoadmapModel.fromJson(Map<String, dynamic>.from(data as Map), targetRole);
       }
       throw ServerException("Failed to generate career roadmap.");
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 403) {
+        final detail = e.response?.data is Map
+            ? (e.response?.data['message'] ?? e.response?.data['detail'])
+            : null;
+        throw ServerException(detail?.toString() ?? "Premium subscription required to access this resource.");
+      }
+      final msg = e.response?.data is Map
+          ? (e.response?.data['message'] ?? e.response?.data['detail'] ?? "Server error (${e.response?.statusCode})")
+          : (e.message ?? "Network error occurred.");
+      throw ServerException(msg.toString());
     } catch (e) {
       throw ServerException(e.toString());
     }

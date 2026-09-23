@@ -8,6 +8,7 @@ from reportlab.platypus import (
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from datetime import datetime
+from config.design_tokens import COLORS, ReportLabTokens
 
 
 def generate_skill_gap_pdf(analysis, is_guiding_mode=False) -> io.BytesIO:
@@ -34,21 +35,21 @@ def generate_skill_gap_pdf(analysis, is_guiding_mode=False) -> io.BytesIO:
 
     styles = getSampleStyleSheet()
 
-    # Color Palette
-    PRIMARY = colors.HexColor("#4F46E5")     # Indigo
-    PRIMARY_LIGHT = colors.HexColor("#EEF2FF") # Indigo 50
-    SECONDARY = colors.HexColor("#0D9488")   # Teal
-    SECONDARY_LIGHT = colors.HexColor("#F0FDFA") # Teal 50
-    SUCCESS = colors.HexColor("#16A34A")     # Emerald Green
-    SUCCESS_LIGHT = colors.HexColor("#DCFCE7")
-    DANGER = colors.HexColor("#E11D48")      # Rose Red
-    DANGER_LIGHT = colors.HexColor("#FFE4E6")
-    WARNING = colors.HexColor("#D97706")     # Amber
-    WARNING_LIGHT = colors.HexColor("#FEF3C7")
-    DARK_BG = colors.HexColor("#0F172A")     # Slate 900
-    TEXT_DARK = colors.HexColor("#1E293B")   # Slate 800
-    TEXT_MUTED = colors.HexColor("#64748B")  # Slate 500
-    BORDER_COLOR = colors.HexColor("#CBD5E1") # Slate 300
+    # Color Palette (Centralized Single Source of Truth)
+    PRIMARY = ReportLabTokens.get("primary")
+    PRIMARY_LIGHT = ReportLabTokens.get("primary_light")
+    SECONDARY = ReportLabTokens.get("secondary")
+    SECONDARY_LIGHT = ReportLabTokens.get("secondary_light")
+    SUCCESS = ReportLabTokens.get("success")
+    SUCCESS_LIGHT = ReportLabTokens.get("success_light")
+    DANGER = ReportLabTokens.get("error")
+    DANGER_LIGHT = ReportLabTokens.get("error_light")
+    WARNING = ReportLabTokens.get("warning")
+    WARNING_LIGHT = ReportLabTokens.get("warning_light")
+    DARK_BG = ReportLabTokens.get("bg_dark")
+    TEXT_DARK = ReportLabTokens.get("text_primary")
+    TEXT_MUTED = ReportLabTokens.get("text_secondary")
+    BORDER_COLOR = ReportLabTokens.get("border")
 
     # Typography Styles
     banner_pre_style = ParagraphStyle(
@@ -388,16 +389,16 @@ def generate_career_roadmap_pdf(roadmap) -> io.BytesIO:
 
     styles = getSampleStyleSheet()
 
-    PRIMARY = colors.HexColor("#0D9488")     # Teal 600
-    PRIMARY_LIGHT = colors.HexColor("#F0FDFA") # Teal 50
-    SECONDARY = colors.HexColor("#4F46E5")   # Indigo 600
-    SECONDARY_LIGHT = colors.HexColor("#EEF2FF") # Indigo 50
-    WARNING = colors.HexColor("#D97706")     # Amber
-    WARNING_LIGHT = colors.HexColor("#FEF3C7")
-    DARK_BG = colors.HexColor("#0F172A")     # Slate 900
-    TEXT_DARK = colors.HexColor("#1E293B")   # Slate 800
-    TEXT_MUTED = colors.HexColor("#64748B")  # Slate 500
-    BORDER_COLOR = colors.HexColor("#CBD5E1") # Slate 300
+    PRIMARY = ReportLabTokens.get("secondary")
+    PRIMARY_LIGHT = ReportLabTokens.get("secondary_light")
+    SECONDARY = ReportLabTokens.get("primary")
+    SECONDARY_LIGHT = ReportLabTokens.get("primary_light")
+    WARNING = ReportLabTokens.get("warning")
+    WARNING_LIGHT = ReportLabTokens.get("warning_light")
+    DARK_BG = ReportLabTokens.get("bg_dark")
+    TEXT_DARK = ReportLabTokens.get("text_primary")
+    TEXT_MUTED = ReportLabTokens.get("text_secondary")
+    BORDER_COLOR = ReportLabTokens.get("border")
 
     banner_pre_style = ParagraphStyle(
         'RoadmapBannerPre',
@@ -777,13 +778,13 @@ def generate_resume_pdf(markdown_content: str, template_style: str = "classic") 
 
     # Determine theme color palette
     if template_style == "modern":
-        primary_color = colors.HexColor("#0F766E")   # Emerald
-        secondary_color = colors.HexColor("#0284C7") # Slate Blue
-        divider_color = colors.HexColor("#CBD5E1")
+        primary_color = ReportLabTokens.get("secondary")
+        secondary_color = ReportLabTokens.get("primary")
+        divider_color = ReportLabTokens.get("border")
     elif template_style == "minimalist":
-        primary_color = colors.HexColor("#0D9488")   # Teal
-        secondary_color = colors.HexColor("#334155") # Charcoal
-        divider_color = colors.HexColor("#E2E8F0")
+        primary_color = ReportLabTokens.get("primary")
+        secondary_color = ReportLabTokens.get("text_secondary")
+        divider_color = ReportLabTokens.get("border")
     else:
         # Default "classic"
         primary_color = colors.HexColor("#1E3A8A")   # Deep Navy

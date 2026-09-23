@@ -4,10 +4,12 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/di/injection.dart';
 import 'package:frontend/core/storage/secure_storage.dart';
-import 'package:frontend/core/widgets/circular_score_gauge.dart';
+import 'package:frontend/core/widgets/score_stamp.dart';
 import 'package:frontend/core/widgets/progress_bar_row.dart';
 import 'package:frontend/features/resume/domain/repositories/resume_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 
 class ATSAnalysisScreen extends StatefulWidget {
   final String resumeId;
@@ -154,7 +156,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error updating job tracker: $e"), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text("Error updating job tracker: $e"), backgroundColor: AppColors.error),
         );
       }
     }
@@ -170,12 +172,12 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
   };
 
   static const Map<String, Color> _statusColors = {
-    'SAVED': Color(0xFF6366F1),
-    'SHORTLISTED': Color(0xFFF59E0B),
-    'APPLIED': Color(0xFF3B82F6),
-    'INTERVIEWING': Color(0xFF8B5CF6),
-    'OFFER_RECEIVED': Color(0xFF22C55E),
-    'REJECTED': Color(0xFFEF4444),
+    'SAVED': AppColors.cobalt,
+    'SHORTLISTED': AppColors.ochre,
+    'APPLIED': AppColors.cobalt,
+    'INTERVIEWING': AppColors.ochre,
+    'OFFER_RECEIVED': AppColors.forest,
+    'REJECTED': AppColors.brick,
   };
 
   static const Map<String, IconData> _statusIcons = {
@@ -186,6 +188,13 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     'OFFER_RECEIVED': Icons.emoji_events_rounded,
     'REJECTED': Icons.cancel_rounded,
   };
+
+  Color _scoreColor(int score, [bool? isDark]) {
+    final dark = isDark ?? (mounted ? Theme.of(context).brightness == Brightness.dark : true);
+    if (score >= 70) return AppColors.resolveForest(dark);
+    if (score >= 50) return AppColors.resolveOchre(dark);
+    return AppColors.resolveBrick(dark);
+  }
 
   @override
   void dispose() {
@@ -477,8 +486,12 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
 
   void _showTemplateSelectionModal({required String downloadType}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+    final cardBg = AppColors.resolvePaper(isDark);
+    final textPrimary = AppColors.resolveInk(isDark);
+    final textSecondary = AppColors.resolveInkSoft(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
     String selectedTemplate = 'modern';
 
     showModalBottomSheet(
@@ -497,158 +510,169 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             },
             {
               "key": "modern",
-              "name": "Modern Tech",
-              "desc": "Emerald & slate styling with left-aligned sections and colored headers. Perfect for tech & startup roles.",
-              "icon": Icons.auto_awesome,
-              "color": const Color(0xFF0F766E),
+              "name": "Modern Technical",
+              "desc": "Clean left-accent bar with prominent skills grid and metrics. Optimized for engineering & tech roles.",
+              "icon": Icons.dashboard_outlined,
+              "color": cobalt,
             },
             {
-              "key": "minimalist",
-              "name": "Minimalist Crisp",
-              "desc": "Compact charcoal & teal design maximizing readability and content density. Great for experienced devs.",
-              "icon": Icons.space_dashboard_outlined,
-              "color": const Color(0xFF0D9488),
+              "key": "minimal",
+              "name": "Minimalist Clean",
+              "desc": "Distraction-free single-column design with elegant typography. Maximum readability for strict ATS scanners.",
+              "icon": Icons.subject_outlined,
+              "color": isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
             },
           ];
 
           return Container(
-            padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
               color: cardBg,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              border: Border.all(color: rule, width: 1),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFF6366F1), size: 24),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          downloadType == 'jd_tailored' ? "Download JD-Tailored Resume" : "Download Improved Resume",
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary),
-                        ),
-                        Text(
-                          downloadType == 'jd_tailored' 
-                              ? "Select a template for your JD-optimized resume"
-                              : "Select a template with your accepted improvements",
-                          style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                ...templates.map((tpl) {
-                  final isSelected = selectedTemplate == tpl["key"];
-                  final tplColor = tpl["color"] as Color;
-
-                  return GestureDetector(
-                    onTap: () {
-                      setModalState(() {
-                        selectedTemplate = tpl["key"] as String;
-                      });
-                    },
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              left: 24,
+              right: 24,
+              top: 16,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
                     child: Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
+                      width: 40,
+                      height: 4,
                       decoration: BoxDecoration(
-                        color: isSelected ? tplColor.withValues(alpha: 0.1) : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected ? tplColor : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-                          width: isSelected ? 2 : 1,
-                        ),
+                        color: rule,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: tplColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(tpl["icon"] as IconData, color: tplColor, size: 22),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  tpl["name"] as String,
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: isSelected ? tplColor : textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  tpl["desc"] as String,
-                                  style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Radio<String>(
-                            value: tpl["key"] as String,
-                            groupValue: selectedTemplate,
-                            activeColor: tplColor,
-                            onChanged: (val) {
-                              setModalState(() {
-                                selectedTemplate = val!;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      _downloadResumeWithTemplate(selectedTemplate, downloadType: downloadType);
-                    },
-                    icon: const Icon(Icons.download_rounded, size: 18),
-                    label: Text(
-                      "Generate & Download (${templates.firstWhere((t) => t['key'] == selectedTemplate)['name']})",
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6366F1),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: cobalt.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: rule),
+                        ),
+                        child: Icon(Icons.picture_as_pdf_rounded, color: cobalt, size: 24),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              downloadType == 'jd_tailored' ? "Download JD-Tailored Resume" : "Download Improved Resume",
+                              style: AppTypography.displayHeading(color: textPrimary, fontSize: 18),
+                            ),
+                            Text(
+                              downloadType == 'jd_tailored'
+                                  ? "Select a template for your JD-optimized resume"
+                                  : "Select a template with your accepted improvements",
+                              style: AppTypography.bodyRegular(color: textSecondary, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  ...templates.map((tpl) {
+                    final isSelected = selectedTemplate == tpl["key"];
+                    final tplColor = tpl["color"] as Color;
+
+                    return GestureDetector(
+                      onTap: () {
+                        setModalState(() {
+                          selectedTemplate = tpl["key"] as String;
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isSelected ? tplColor.withValues(alpha: 0.08) : paperAlt,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: isSelected ? tplColor : rule,
+                            width: isSelected ? 1.5 : 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: tplColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Icon(tpl["icon"] as IconData, color: tplColor, size: 22),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    tpl["name"] as String,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: isSelected ? tplColor : textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    tpl["desc"] as String,
+                                    style: TextStyle(fontSize: 11, color: textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Radio<String>(
+                              value: tpl["key"] as String,
+                              groupValue: selectedTemplate,
+                              activeColor: tplColor,
+                              onChanged: (val) {
+                                setModalState(() {
+                                  selectedTemplate = val!;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        _downloadResumeWithTemplate(selectedTemplate, downloadType: downloadType);
+                      },
+                      icon: const Icon(Icons.download_rounded, size: 18),
+                      label: Text(
+                        "Generate & Download (${templates.firstWhere((t) => t['key'] == selectedTemplate)['name']})",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: cobalt,
+                        foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -822,10 +846,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+    final cardBg = AppColors.resolvePaperAlt(isDark);
+    final textPrimary = AppColors.resolveInk(isDark);
+    final textSecondary = AppColors.resolveInkSoft(isDark);
+    final borderColor = AppColors.resolveRule(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
 
     final atsScore = (_atsData['ats_score'] as num?)?.toInt() ?? 85;
     final formattingScore = (_atsData['formatting_score'] as num?)?.toInt() ?? 90;
@@ -865,20 +890,24 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6366F1)))
+          ? Center(child: CircularProgressIndicator(color: cobalt))
           : _errorMessage != null
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 48),
+                      Icon(Icons.warning_amber_rounded, color: AppColors.resolveOchre(isDark), size: 48),
                       const SizedBox(height: 16),
-                      Text(_errorMessage!, style: TextStyle(color: textPrimary)),
+                      Text(_errorMessage!, style: AppTypography.bodyRegular(color: textPrimary)),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _loadAnalysisData,
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1)),
-                        child: const Text("Retry", style: TextStyle(color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: cobalt,
+                          foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        ),
+                        child: const Text("Retry"),
                       ),
                     ],
                   ),
@@ -920,7 +949,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                             padding: const EdgeInsets.all(24),
                             decoration: BoxDecoration(
                               color: cardBg,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(4),
                               border: Border.all(color: borderColor),
                             ),
                             child: Column(
@@ -928,21 +957,21 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                               children: [
                                 Text(
                                   "AI Suggestions Summary",
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+                                  style: AppTypography.displayHeading(fontSize: 16, color: textPrimary),
                                 ),
                                 const SizedBox(height: 16),
                                 ...suggestionsList.map((sug) => Padding(
                                       padding: const EdgeInsets.only(bottom: 12.0),
                                       child: Row(
                                         children: [
-                                          const Icon(Icons.arrow_right_rounded, color: Color(0xFF6366F1), size: 22),
+                                          Icon(Icons.arrow_right_rounded, color: cobalt, size: 22),
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
                                               sug,
-                                              style: TextStyle(
+                                              style: AppTypography.bodyRegular(
                                                 fontSize: 13,
-                                                color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155),
+                                                color: textPrimary,
                                               ),
                                             ),
                                           ),
@@ -953,9 +982,9 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                 OutlinedButton(
                                   onPressed: () => _tabController.animateTo(2),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF6366F1),
-                                    side: const BorderSide(color: Color(0xFF6366F1)),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    foregroundColor: cobalt,
+                                    side: BorderSide(color: cobalt),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                                   ),
                                   child: const Text("Open Live Diff Editor"),
                                 ),
@@ -980,7 +1009,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                             padding: const EdgeInsets.all(24),
                             decoration: BoxDecoration(
                               color: cardBg,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(4),
                               border: Border.all(color: borderColor),
                             ),
                             child: Column(
@@ -988,28 +1017,32 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                               children: [
                                 Text(
                                   "Detailed ATS Score Categories",
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+                                  style: AppTypography.displayHeading(fontSize: 16, color: textPrimary),
                                 ),
                                 const SizedBox(height: 16),
-                                ProgressBarRow(label: "Contact Info & Completeness", percentage: completenessScore, barColor: const Color(0xFF22C55E)),
-                                ProgressBarRow(label: "Technical Skills Alignment", percentage: skillsScore, barColor: const Color(0xFF22C55E)),
-                                ProgressBarRow(label: "Experience Impact & Depth", percentage: experienceScore, barColor: const Color(0xFF22C55E)),
-                                ProgressBarRow(label: "Education & Certifications", percentage: educationScore, barColor: const Color(0xFF22C55E)),
-                                ProgressBarRow(label: "Document Formatting", percentage: formattingScore, barColor: const Color(0xFF22C55E)),
-                                ProgressBarRow(label: "Keyword Density", percentage: keywordScore, barColor: const Color(0xFFF59E0B)),
-                                ProgressBarRow(label: "Readability Index", percentage: 85, barColor: const Color(0xFF22C55E)),
+                                ProgressBarRow(label: "Contact Info & Completeness", percentage: completenessScore, barColor: _scoreColor(completenessScore, isDark)),
+                                ProgressBarRow(label: "Technical Skills Alignment", percentage: skillsScore, barColor: _scoreColor(skillsScore, isDark)),
+                                ProgressBarRow(label: "Experience Impact & Depth", percentage: experienceScore, barColor: _scoreColor(experienceScore, isDark)),
+                                ProgressBarRow(label: "Education & Certifications", percentage: educationScore, barColor: _scoreColor(educationScore, isDark)),
+                                ProgressBarRow(label: "Document Formatting", percentage: formattingScore, barColor: _scoreColor(formattingScore, isDark)),
+                                ProgressBarRow(label: "Keyword Density", percentage: keywordScore, barColor: _scoreColor(keywordScore, isDark)),
+                                ProgressBarRow(label: "Readability Index", percentage: 85, barColor: _scoreColor(85, isDark)),
                               ],
                             ),
                           ),
                           const SizedBox(height: 24),
-                          Text("Job Description Semantic Matcher", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary)),
+                          Text("Job Description Semantic Matcher", style: AppTypography.displayHeading(fontSize: 16, color: textPrimary)),
                           const SizedBox(height: 12),
                           TextField(
                             controller: _jdController,
                             maxLines: 4,
-                            style: TextStyle(color: textPrimary),
-                            decoration: const InputDecoration(
+                            style: AppTypography.bodyRegular(color: textPrimary),
+                            decoration: InputDecoration(
                               hintText: "Paste target job description text here to measure fit score...",
+                              hintStyle: AppTypography.bodyRegular(color: textSecondary),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: borderColor)),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: borderColor)),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: cobalt, width: 1.5)),
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -1018,19 +1051,27 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                               ElevatedButton.icon(
                                 onPressed: _isJdLoading ? null : _calculateJdMatch,
                                 icon: _isJdLoading 
-                                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: isDark ? AppColors.darkPaper : Colors.white, strokeWidth: 2))
                                     : const Icon(Icons.analytics_rounded, size: 18),
                                 label: Text(_isJdLoading ? "Analyzing Match..." : "Run JD Match Analysis"),
-                                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6366F1), foregroundColor: Colors.white),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: cobalt,
+                                  foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                ),
                               ),
                               const SizedBox(width: 12),
                               OutlinedButton.icon(
                                 onPressed: _isTailorLoading ? null : _generateTailoredResume,
                                 icon: _isTailorLoading
-                                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Color(0xFF14B8A6), strokeWidth: 2))
+                                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: AppColors.resolveForest(isDark), strokeWidth: 2))
                                     : const Icon(Icons.auto_awesome_rounded, size: 18),
                                 label: Text(_isTailorLoading ? "Tailoring..." : "Auto-Tailor Resume"),
-                                style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF14B8A6)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.resolveForest(isDark),
+                                  side: BorderSide(color: AppColors.resolveForest(isDark)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                ),
                               ),
                             ],
                           ),
@@ -1041,16 +1082,16 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: cardBg,
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(4),
                                 border: Border.all(color: borderColor),
                               ),
                               child: Column(
                                 children: [
-                                  const CircularProgressIndicator(color: Color(0xFF6366F1)),
+                                  CircularProgressIndicator(color: cobalt),
                                   const SizedBox(height: 16),
                                   Text(
                                     "Deep comparing resume against job requirements...",
-                                    style: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+                                    style: AppTypography.bodyRegular(color: textPrimary, fontSize: 14),
                                   ),
                                 ],
                               ),
@@ -1060,23 +1101,23 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEF4444).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
+                                color: AppColors.resolveBrick(isDark).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: AppColors.resolveBrick(isDark).withValues(alpha: 0.3)),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444)),
+                                  Icon(Icons.error_outline_rounded, color: AppColors.resolveBrick(isDark)),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
                                       _jdErrorMessage!,
-                                      style: const TextStyle(color: Color(0xFFEF4444), fontSize: 13),
+                                      style: TextStyle(color: AppColors.resolveBrick(isDark), fontSize: 13),
                                     ),
                                   ),
                                   TextButton(
                                     onPressed: _calculateJdMatch,
-                                    child: const Text("Retry", style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
+                                    child: Text("Retry", style: TextStyle(color: cobalt, fontWeight: FontWeight.bold)),
                                   ),
                                 ],
                               ),
@@ -1087,7 +1128,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                               padding: const EdgeInsets.all(24),
                               decoration: BoxDecoration(
                                 color: cardBg,
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(4),
                                 border: Border.all(color: borderColor),
                               ),
                               child: Column(
@@ -1095,11 +1136,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                 children: [
                                   Row(
                                     children: [
-                                      CircularScoreGauge(
+                                      ScoreStamp(
                                         score: (_jdMatchData!['match_score'] as num?)?.toInt() ?? 75,
-                                        size: 90,
-                                        strokeWidth: 10,
-                                        progressColor: const Color(0xFF22C55E),
+                                        size: 94,
+                                        label: "target fit",
                                       ),
                                       const SizedBox(width: 24),
                                       Expanded(
@@ -1183,27 +1223,27 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                     Container(
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF6366F1).withOpacity(0.08),
-                                        borderRadius: BorderRadius.circular(14),
-                                        border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.2)),
+                                        color: cobalt.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: cobalt.withValues(alpha: 0.2)),
                                       ),
                                       child: Row(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          const Icon(Icons.lightbulb_outline_rounded, color: Color(0xFF6366F1), size: 20),
+                                          Icon(Icons.lightbulb_outline_rounded, color: cobalt, size: 20),
                                           const SizedBox(width: 10),
                                           Expanded(
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                const Text(
+                                                Text(
                                                   "Actionable Recommendations",
-                                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF6366F1)),
+                                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: cobalt),
                                                 ),
                                                 const SizedBox(height: 4),
                                                 Text(
                                                   _jdMatchData!['recommendations'].toString(),
-                                                  style: TextStyle(fontSize: 13, height: 1.4, color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155)),
+                                                  style: TextStyle(fontSize: 13, height: 1.4, color: textPrimary),
                                                 ),
                                               ],
                                             ),
@@ -1300,7 +1340,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                                     children: [
                                                       TextSpan(
                                                         text: section.isNotEmpty ? "[$section] " : "",
-                                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6366F1)),
+                                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: cobalt),
                                                       ),
                                                       TextSpan(
                                                         text: desc,
@@ -1324,7 +1364,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
                                 color: cardBg,
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(4),
                                 border: Border.all(color: borderColor),
                               ),
                               child: Column(
@@ -1335,7 +1375,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                     children: [
                                       Text(
                                         "Auto-Tailored Resume Output",
-                                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+                                        style: AppTypography.displayHeading(fontSize: 16, color: textPrimary),
                                       ),
                                       Row(
                                         children: [
@@ -1350,7 +1390,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                             label: const Text("Copy Text"),
                                             style: OutlinedButton.styleFrom(
                                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                                             ),
                                           ),
                                           const SizedBox(width: 8),
@@ -1359,10 +1399,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                             icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
                                             label: const Text("Download PDF (Select Template)"),
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF6366F1),
-                                              foregroundColor: Colors.white,
+                                              backgroundColor: cobalt,
+                                              foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
                                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                                             ),
                                           ),
                                         ],
@@ -1435,7 +1475,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
                                 color: cardBg,
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(4),
                                 border: Border.all(color: borderColor),
                               ),
                               child: Column(
@@ -1446,12 +1486,12 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF6366F1).withOpacity(0.12),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: cobalt.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(4),
                                         ),
                                         child: Text(
                                           item['section'] as String,
-                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6366F1)),
+                                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: cobalt),
                                         ),
                                       ),
                                       const Spacer(),
@@ -1459,16 +1499,16 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFF22C55E).withOpacity(0.15),
-                                            borderRadius: BorderRadius.circular(8),
+                                            color: AppColors.resolveForest(isDark).withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(4),
                                           ),
-                                          child: const Row(
+                                          child: Row(
                                             children: [
-                                              Icon(Icons.check_circle_rounded, color: Color(0xFF22C55E), size: 14),
-                                              SizedBox(width: 4),
+                                              Icon(Icons.check_circle_rounded, color: AppColors.resolveForest(isDark), size: 14),
+                                              const SizedBox(width: 4),
                                               Text(
                                                 "Applied to Resume",
-                                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF22C55E)),
+                                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.resolveForest(isDark)),
                                               ),
                                             ],
                                           ),
@@ -1587,35 +1627,40 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
   }
 
   Widget _buildAtsGaugeCard(int atsScore, Color cardBg, Color borderColor, Color textPrimary, bool isDark) {
+    final inkSoft = AppColors.resolveInkSoft(isDark);
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
+        color: paperAlt,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: rule, width: 1.0),
       ),
       child: Column(
         children: [
           Text(
-            "ATS Score",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+            "ATS DOSSIER AUDIT",
+            style: AppTypography.monoLabel(color: inkSoft, fontSize: 11).copyWith(letterSpacing: 0.6),
           ),
           const SizedBox(height: 20),
-          CircularScoreGauge(
+          ScoreStamp(
             score: atsScore,
-            size: 150,
-            strokeWidth: 14,
-            progressColor: atsScore >= 80 ? const Color(0xFF22C55E) : (atsScore >= 60 ? const Color(0xFFF59E0B) : const Color(0xFFEF4444)),
-            statusText: atsScore >= 80 ? "Great Score!" : "Good Baseline",
-            statusTextColor: const Color(0xFF22C55E),
+            size: 140,
+            label: atsScore >= 70 ? "ats approved" : (atsScore >= 50 ? "baseline match" : "flagged rework"),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Text(
-            "You're in the top 20% of candidates.",
+            atsScore >= 70
+                ? "Dossier matches top 20% candidate criteria."
+                : (atsScore >= 50
+                    ? "Moderate alignment. Address keyword omissions below."
+                    : "Significant formatting & keyword revisions recommended."),
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: AppTypography.bodyRegular(
+              color: inkSoft,
               fontSize: 12,
-              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
             ),
           ),
         ],
@@ -1624,33 +1669,39 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
   }
 
   Widget _buildQuickScoreBreakdownCard(int completeness, int skills, int experience, int education, int formatting, int keywords, Color cardBg, Color borderColor, Color textPrimary) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final paperAlt = AppColors.resolvePaperAlt(isDark);
+    final rule = AppColors.resolveRule(isDark);
+    final ink = AppColors.resolveInk(isDark);
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
+        color: paperAlt,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: rule, width: 1.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             "Quick Score Breakdown",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+            style: AppTypography.displayHeading(color: ink, fontSize: 16),
           ),
           const SizedBox(height: 16),
-          ProgressBarRow(label: "Contact Info & Structure", percentage: completeness, barColor: const Color(0xFF22C55E)),
-          ProgressBarRow(label: "Technical Skills Fit", percentage: skills, barColor: const Color(0xFF22C55E)),
-          ProgressBarRow(label: "Work Experience", percentage: experience, barColor: const Color(0xFF22C55E)),
-          ProgressBarRow(label: "Education & Degrees", percentage: education, barColor: const Color(0xFF22C55E)),
-          ProgressBarRow(label: "Formatting Quality", percentage: formatting, barColor: const Color(0xFF22C55E)),
-          ProgressBarRow(label: "Keyword Density", percentage: keywords, barColor: const Color(0xFFF59E0B)),
+          ProgressBarRow(label: "Contact Info & Structure", percentage: completeness, barColor: _scoreColor(completeness, isDark)),
+          ProgressBarRow(label: "Technical Skills Fit", percentage: skills, barColor: _scoreColor(skills, isDark)),
+          ProgressBarRow(label: "Work Experience", percentage: experience, barColor: _scoreColor(experience, isDark)),
+          ProgressBarRow(label: "Education & Degrees", percentage: education, barColor: _scoreColor(education, isDark)),
+          ProgressBarRow(label: "Formatting Quality", percentage: formatting, barColor: _scoreColor(formatting, isDark)),
+          ProgressBarRow(label: "Keyword Density", percentage: keywords, barColor: _scoreColor(keywords, isDark)),
         ],
       ),
     );
   }
 
   Widget _buildRealTimeJobsSection(Color cardBg, Color borderColor, Color textPrimary, Color textSecondary, bool isDark) {
+    final cobalt = AppColors.resolveCobalt(isDark);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1662,10 +1713,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
+                    color: cobalt.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Icon(Icons.radar_rounded, color: Color(0xFF6366F1), size: 22),
+                  child: Icon(Icons.radar_rounded, color: cobalt, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Column(
@@ -1673,11 +1724,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                   children: [
                     Text(
                       "Real-Time Matching Jobs",
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: textPrimary),
+                      style: AppTypography.displayHeading(fontSize: 17, color: textPrimary),
                     ),
                     Text(
                       "Live opportunities ranked by resume skills & location",
-                      style: TextStyle(fontSize: 12, color: textSecondary),
+                      style: AppTypography.bodyRegular(fontSize: 12, color: textSecondary),
                     ),
                   ],
                 ),
@@ -1686,18 +1737,18 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: const Color(0xFF22C55E).withOpacity(0.15),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.3)),
+                color: AppColors.resolveForest(isDark).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: AppColors.resolveForest(isDark).withValues(alpha: 0.3)),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.circle, color: Color(0xFF22C55E), size: 8),
-                  SizedBox(width: 6),
+                  Icon(Icons.circle, color: AppColors.resolveForest(isDark), size: 8),
+                  const SizedBox(width: 6),
                   Text(
                     "Live Match",
-                    style: TextStyle(color: Color(0xFF22C55E), fontWeight: FontWeight.bold, fontSize: 11),
+                    style: TextStyle(color: AppColors.resolveForest(isDark), fontWeight: FontWeight.bold, fontSize: 11),
                   ),
                 ],
               ),
@@ -1711,7 +1762,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: cardBg,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(4),
             border: Border.all(color: borderColor),
           ),
           child: Column(
@@ -1722,25 +1773,25 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                   Expanded(
                     child: TextField(
                       controller: _locationController,
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                      style: AppTypography.bodyRegular(color: textPrimary, fontSize: 14),
                       decoration: InputDecoration(
                         hintText: "Enter location (e.g. Bengaluru, Kochi, London, Remote)...",
-                        hintStyle: TextStyle(color: textSecondary, fontSize: 13),
-                        prefixIcon: const Icon(Icons.location_on_rounded, color: Color(0xFF6366F1), size: 20),
+                        hintStyle: AppTypography.bodyRegular(color: textSecondary, fontSize: 13),
+                        prefixIcon: Icon(Icons.location_on_rounded, color: cobalt, size: 20),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         filled: true,
-                        fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                        fillColor: AppColors.resolvePaper(isDark),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(4),
                           borderSide: BorderSide(color: borderColor),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(4),
                           borderSide: BorderSide(color: borderColor),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF6366F1), width: 1.5),
+                          borderRadius: BorderRadius.circular(4),
+                          borderSide: BorderSide(color: cobalt, width: 1.5),
                         ),
                       ),
                       onSubmitted: (val) => _fetchJobsForLocation(val),
@@ -1750,16 +1801,16 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                   ElevatedButton(
                     onPressed: _isJobsLoading ? null : () => _fetchJobsForLocation(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6366F1),
-                      foregroundColor: Colors.white,
+                      backgroundColor: cobalt,
+                      foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                     ),
                     child: _isJobsLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(color: isDark ? AppColors.darkPaper : Colors.white, strokeWidth: 2),
                           )
                         : const Text("Search", style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
@@ -1777,18 +1828,18 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       child: FilterChip(
                         label: Text(loc),
                         selected: isSelected,
-                        selectedColor: const Color(0xFF6366F1).withOpacity(0.2),
-                        checkmarkColor: const Color(0xFF6366F1),
+                        selectedColor: cobalt.withValues(alpha: 0.15),
+                        checkmarkColor: cobalt,
                         labelStyle: TextStyle(
                           fontSize: 12,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          color: isSelected ? const Color(0xFF6366F1) : textSecondary,
+                          color: isSelected ? cobalt : textSecondary,
                         ),
-                        backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                        backgroundColor: AppColors.resolvePaperAlt(isDark),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(4),
                           side: BorderSide(
-                            color: isSelected ? const Color(0xFF6366F1) : borderColor,
+                            color: isSelected ? cobalt : borderColor,
                           ),
                         ),
                         onSelected: (selected) {
@@ -1810,9 +1861,9 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.3)),
+            color: cardBg,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: borderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1822,10 +1873,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6366F1).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
+                      color: cobalt.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Icon(Icons.travel_explore_rounded, color: Color(0xFF6366F1), size: 20),
+                    child: Icon(Icons.travel_explore_rounded, color: cobalt, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1834,11 +1885,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       children: [
                         Text(
                           "Direct Search on Top Job Portals",
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textPrimary),
+                          style: AppTypography.displayHeading(fontSize: 14, color: textPrimary),
                         ),
                         Text(
                           "1-Tap search live openings for your role in $_selectedLocation",
-                          style: TextStyle(fontSize: 12, color: textSecondary),
+                          style: AppTypography.bodyRegular(fontSize: 12, color: textSecondary),
                         ),
                       ],
                     ),
@@ -1914,16 +1965,16 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: cardBg,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(4),
               border: Border.all(color: borderColor),
             ),
             child: Column(
               children: [
-                const CircularProgressIndicator(color: Color(0xFF6366F1)),
+                CircularProgressIndicator(color: cobalt),
                 const SizedBox(height: 16),
                 Text(
                   "Finding real-world matching roles in $_selectedLocation...",
-                  style: TextStyle(color: textSecondary, fontSize: 13),
+                  style: AppTypography.bodyRegular(color: textSecondary, fontSize: 13),
                 ),
               ],
             ),
@@ -1934,21 +1985,21 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: cardBg,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(4),
               border: Border.all(color: borderColor),
             ),
             child: Column(
               children: [
-                const Icon(Icons.work_off_rounded, color: Color(0xFF94A3B8), size: 40),
+                Icon(Icons.work_off_rounded, color: textSecondary, size: 40),
                 const SizedBox(height: 12),
                 Text(
                   "No matching jobs found in $_selectedLocation.",
-                  style: TextStyle(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                  style: AppTypography.displayHeading(color: textPrimary, fontSize: 15),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   "Try searching another city or switch back to Remote.",
-                  style: TextStyle(color: textSecondary, fontSize: 13),
+                  style: AppTypography.bodyRegular(color: textSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
@@ -1959,8 +2010,9 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                   icon: const Icon(Icons.refresh_rounded, size: 16),
                   label: const Text("Show Remote Jobs"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6366F1),
-                    foregroundColor: Colors.white,
+                    backgroundColor: cobalt,
+                    foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                   ),
                 ),
               ],
@@ -2001,7 +2053,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
               sourcePlatform = job['source'].toString();
             }
 
-            Color platformColor = const Color(0xFF6366F1);
+            Color platformColor = cobalt;
             IconData platformIcon = Icons.verified_user_rounded;
             final srcLower = sourcePlatform.toLowerCase();
             if (srcLower.contains("linkedin")) {
@@ -2205,12 +2257,12 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: currentStatus != null
-                                ? (_statusColors[currentStatus] ?? const Color(0xFF6366F1)).withOpacity(0.12)
-                                : (isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9)),
-                            borderRadius: BorderRadius.circular(8),
+                                ? (_statusColors[currentStatus] ?? cobalt).withValues(alpha: 0.12)
+                                : AppColors.resolvePaper(isDark),
+                            borderRadius: BorderRadius.circular(4),
                             border: Border.all(
                               color: currentStatus != null
-                                  ? (_statusColors[currentStatus] ?? const Color(0xFF6366F1)).withOpacity(0.4)
+                                  ? (_statusColors[currentStatus] ?? cobalt).withValues(alpha: 0.4)
                                   : borderColor,
                             ),
                           ),
@@ -2220,7 +2272,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                               Icon(
                                 currentStatus != null ? (_statusIcons[currentStatus] ?? Icons.bookmark_rounded) : Icons.bookmark_add_outlined,
                                 size: 14,
-                                color: currentStatus != null ? (_statusColors[currentStatus] ?? const Color(0xFF6366F1)) : textPrimary,
+                                color: currentStatus != null ? (_statusColors[currentStatus] ?? cobalt) : textPrimary,
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -2228,7 +2280,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: currentStatus != null ? (_statusColors[currentStatus] ?? const Color(0xFF6366F1)) : textPrimary,
+                                  color: currentStatus != null ? (_statusColors[currentStatus] ?? cobalt) : textPrimary,
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -2240,7 +2292,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                           ..._statusTitles.entries.map((entry) {
                             final st = entry.key;
                             final label = entry.value;
-                            final color = _statusColors[st] ?? const Color(0xFF6366F1);
+                            final color = _statusColors[st] ?? cobalt;
                             final icon = _statusIcons[st] ?? Icons.circle;
                             return PopupMenuItem(
                               value: st,
@@ -2264,7 +2316,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                           backgroundColor: platformColor,
                           foregroundColor: Colors.white,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         ),
                       ),
@@ -2278,10 +2330,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                         icon: const Icon(Icons.analytics_rounded, size: 15),
                         label: const Text("View Job Match", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
-                          foregroundColor: Colors.white,
+                          backgroundColor: cobalt,
+                          foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         ),
                       ),

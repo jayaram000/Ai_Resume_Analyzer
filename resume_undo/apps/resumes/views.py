@@ -1,10 +1,13 @@
 import logging
 from rest_framework import viewsets, status, permissions
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.core.exceptions import ValidationError
 from drf_spectacular.utils import extend_schema
 
+from resumes.models import Resume
+from resumes.services import ResumeComparisonService
 from resumes.serializers import (
     ResumeDetailSerializer,
     UploadResumeRequestSerializer,
@@ -21,7 +24,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
     Production ViewSet for Resume Upload and Management per SAD Section 8 & 10.
     """
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     serializer_class = ResumeDetailSerializer
 
     def __init__(self, **kwargs):
@@ -109,3 +112,38 @@ class ResumeViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        summary="Compare Two Resume Dossiers",
+        description="Audits diffs between two resumes, computing ATS metrics and skill/keyword adjustments.",
+        responses={200: "Comparison Result", 400: "Bad Request", 404: "Not Found"},
+    )
+    @action(detail=False, methods=["post"], url_path="compare")
+    def compare(self, request, *args, **kwargs):
+        before_id = request.data.get("before_resume_id")
+        after_id = request.data.get("after_resume_id")
+
+        if not before_id or not after_id:
+            return Response(
+                {"success": False, "message": "Both before_resume_id and after_resume_id are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            resume_old = Resume.objects.get(id=before_id, user=request.user)
+            resume_new = Resume.objects.get(id=after_id, user=request.user)
+        except (Resume.DoesNotExist, ValueError):
+            return Response(
+                {"success": False, "message": "One or both resumes could not be found or access denied."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            comparison_result = ResumeComparisonService.compare_resumes(resume_old, resume_new)
+            return Response({"success": True, "data": comparison_result}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Resume comparison error: {e}", exc_info=True)
+            return Response(
+                {"success": False, "message": f"Comparison failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

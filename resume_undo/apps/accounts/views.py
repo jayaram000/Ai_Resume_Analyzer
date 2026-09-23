@@ -1,6 +1,7 @@
 from rest_framework import status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from accounts.models import UserProfile
@@ -10,11 +11,15 @@ from accounts.serializers import (
     UserProfileSerializer,
     EmailVerificationSerializer,
     PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer
+    PasswordResetConfirmSerializer,
+    CustomTokenObtainPairSerializer
 )
 from accounts.services import send_verification_email, send_password_reset_email
 
 User = get_user_model()
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
 
 class RegisterView(APIView):
     permission_classes = [permissions.AllowAny]

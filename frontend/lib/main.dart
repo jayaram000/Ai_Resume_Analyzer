@@ -8,6 +8,7 @@ import 'package:frontend/features/dashboard/screens/dashboard_screen.dart';
 import 'package:frontend/features/auth/screens/forgot_password_screen.dart';
 
 import 'package:frontend/core/theme/app_theme.dart';
+import 'package:frontend/core/theme/app_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,13 +27,18 @@ class MyApp extends StatelessWidget {
           create: (context) => sl<AuthBloc>()..add(AuthCheckRequested()),
         ),
       ],
-      child: MaterialApp(
-        title: 'ResumeAI & Career Copilot',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.dark,
-        home: const AuthWrapper(),
+      child: ValueListenableBuilder<ThemeMode>(
+        valueListenable: ThemeController.themeModeNotifier,
+        builder: (context, currentMode, _) {
+          return MaterialApp(
+            title: 'ResumeAI & Career Copilot',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: currentMode,
+            home: const AuthWrapper(),
+          );
+        },
       ),
     );
   }
@@ -43,13 +49,15 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         if (state is AuthLoading) {
-          return const Scaffold(
+          return Scaffold(
+            backgroundColor: AppColors.resolvePaper(isDark),
             body: Center(
               child: CircularProgressIndicator(
-                color: Color(0xFF6366F1),
+                color: AppColors.resolveCobalt(isDark),
               ),
             ),
           );
@@ -78,78 +86,79 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final paper = AppColors.resolvePaper(isDark);
+    final cardBg = AppColors.resolvePaperAlt(isDark);
+    final borderColor = AppColors.resolveRule(isDark);
+    final textPrimary = AppColors.resolveInk(isDark);
+    final textSecondary = AppColors.resolveInkMuted(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      backgroundColor: paper,
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Container(
             constraints: const BoxConstraints(maxWidth: 440),
-            padding: const EdgeInsets.all(36.0),
+            padding: const EdgeInsets.all(32.0),
             decoration: BoxDecoration(
               color: cardBg,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(4),
               border: Border.all(color: borderColor),
-              boxShadow: [
-                if (!isDark)
-                  BoxShadow(
-                    color: const Color(0xFF6366F1).withOpacity(0.08),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  )
-              ],
             ),
             child: Form(
               key: _formKey,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // LOGO ICON
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                  // DOSSIER BADGE
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: cobalt.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: cobalt.withValues(alpha: 0.3)),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF6366F1).withOpacity(0.35),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        )
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.rocket_launch_rounded,
-                      size: 36,
-                      color: Colors.white,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.folder_open_rounded, size: 14, color: cobalt),
+                          const SizedBox(width: 6),
+                          Text(
+                            "DOSSIER ACCESS // AUTHENTICATION",
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                              color: cobalt,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Text(
-                    "Welcome Back!",
+                    "Sign In to ResumeAI",
                     style: TextStyle(
-                      fontSize: 26,
+                      fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: textPrimary,
-                      letterSpacing: 0.3,
+                      letterSpacing: -0.3,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "Sign in to access your AI Career Copilot",
+                    "Enter your verified credentials to access career analysis dossiers.",
                     style: TextStyle(
                       fontSize: 13,
                       color: textSecondary,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 28),
 
                   // Email Form
                   TextFormField(
@@ -157,9 +166,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     keyboardType: TextInputType.emailAddress,
                     style: TextStyle(color: textPrimary),
                     decoration: InputDecoration(
-                      hintText: "example@clinic.com or email",
-                      hintStyle: TextStyle(color: textSecondary),
-                      prefixIcon: Icon(Icons.email_outlined, color: textSecondary),
+                      labelText: "EMAIL ADDRESS",
+                      labelStyle: TextStyle(color: textSecondary, fontSize: 11, letterSpacing: 0.5),
+                      hintText: "user@domain.com",
+                      hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
+                      prefixIcon: Icon(Icons.email_outlined, color: textSecondary, size: 18),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty || !value.contains('@')) {
@@ -176,9 +187,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: true,
                     style: TextStyle(color: textPrimary),
                     decoration: InputDecoration(
-                      hintText: "Password",
-                      hintStyle: TextStyle(color: textSecondary),
-                      prefixIcon: Icon(Icons.lock_outline, color: textSecondary),
+                      labelText: "PASSWORD",
+                      labelStyle: TextStyle(color: textSecondary, fontSize: 11, letterSpacing: 0.5),
+                      hintText: "••••••••",
+                      hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
+                      prefixIcon: Icon(Icons.lock_outline, color: textSecondary, size: 18),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty || value.length < 8) {
@@ -196,9 +209,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           MaterialPageRoute(builder: (context) => const ForgotPasswordScreen()),
                         );
                       },
+                      style: TextButton.styleFrom(
+                        foregroundColor: cobalt,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      ),
                       child: const Text(
                         "Forgot Password?",
-                        style: TextStyle(color: Color(0xFF6366F1), fontSize: 13, fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -208,11 +225,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, state) {
                       if (state is AuthFailure) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16.0),
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16.0),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.resolveBrick(isDark).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: AppColors.resolveBrick(isDark).withValues(alpha: 0.3)),
+                          ),
                           child: Text(
                             state.message,
-                            style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                            style: TextStyle(color: AppColors.resolveBrick(isDark), fontSize: 12),
                             textAlign: TextAlign.center,
                           ),
                         );
@@ -224,7 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Submit Button
                   SizedBox(
                     width: double.infinity,
-                    height: 48,
+                    height: 44,
                     child: ElevatedButton(
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
@@ -235,28 +258,28 @@ class _LoginScreenState extends State<LoginScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6366F1),
-                        foregroundColor: Colors.white,
+                        backgroundColor: cobalt,
+                        foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                       child: const Text(
-                        "Sign In",
+                        "AUTHENTICATE & ENTER",
                         style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text("Don't have an account? ", style: TextStyle(color: textSecondary, fontSize: 13)),
+                      Text("Need an account? ", style: TextStyle(color: textSecondary, fontSize: 13)),
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
@@ -264,10 +287,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             MaterialPageRoute(builder: (context) => const RegisterScreen()),
                           );
                         },
-                        child: const Text(
-                          "Sign Up",
+                        child: Text(
+                          "Register File",
                           style: TextStyle(
-                            color: Color(0xFF6366F1),
+                            color: cobalt,
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                           ),
@@ -278,15 +301,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: () {
-                      // Quick developer mode login bypass
                       context.read<AuthBloc>().add(LoginRequested(
                             email: "dev@career.ai",
                             password: "password123",
                           ));
                     },
-                    child: Text(
+                    style: TextButton.styleFrom(
+                      foregroundColor: textSecondary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    ),
+                    child: const Text(
                       "Quick Dev Login Bypass",
-                      style: TextStyle(color: textSecondary, fontSize: 12),
+                      style: TextStyle(fontSize: 12),
                     ),
                   ),
                 ],
@@ -323,18 +349,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
-    final textPrimary = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final paper = AppColors.resolvePaper(isDark);
+    final cardBg = AppColors.resolvePaperAlt(isDark);
+    final borderColor = AppColors.resolveRule(isDark);
+    final textPrimary = AppColors.resolveInk(isDark);
+    final textSecondary = AppColors.resolveInkMuted(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      backgroundColor: paper,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textPrimary),
+          icon: Icon(Icons.arrow_back, color: textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -342,9 +370,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         listener: (context, state) {
           if (state is Unauthenticated) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Registration successful! Please sign in."),
-                backgroundColor: Color(0xFF22C55E),
+              SnackBar(
+                content: const Text("Registration successful! Please sign in."),
+                backgroundColor: AppColors.resolveForest(isDark),
               ),
             );
             Navigator.pop(context);
@@ -352,7 +380,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
-                backgroundColor: Colors.redAccent,
+                backgroundColor: AppColors.resolveBrick(isDark),
               ),
             );
           }
@@ -362,62 +390,71 @@ class _RegisterScreenState extends State<RegisterScreen> {
             padding: const EdgeInsets.all(24.0),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 440),
-              padding: const EdgeInsets.all(36.0),
+              padding: const EdgeInsets.all(32.0),
               decoration: BoxDecoration(
                 color: cardBg,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(4),
                 border: Border.all(color: borderColor),
-                boxShadow: [
-                  if (!isDark)
-                    BoxShadow(
-                      color: const Color(0xFF6366F1).withOpacity(0.08),
-                      blurRadius: 30,
-                      offset: const Offset(0, 10),
-                    )
-                ],
               ),
               child: Form(
                 key: _formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: cobalt.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: cobalt.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.person_add_outlined, size: 14, color: cobalt),
+                            const SizedBox(width: 6),
+                            Text(
+                              "DOSSIER ONBOARDING // NEW USER",
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                                color: cobalt,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: const Icon(
-                        Icons.person_add_rounded,
-                        size: 32,
-                        color: Colors.white,
-                      ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
                     Text(
-                      "Create Account",
+                      "Create Dossier Account",
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: 22,
                         fontWeight: FontWeight.w800,
                         color: textPrimary,
+                        letterSpacing: -0.3,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      "Join ResumeAI to optimize your career path",
+                      "Register a new profile to track resumes, audits, and roadmap progress.",
                       style: TextStyle(fontSize: 13, color: textSecondary),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
 
                     TextFormField(
                       controller: _usernameController,
                       style: TextStyle(color: textPrimary),
                       decoration: InputDecoration(
-                        hintText: "Username",
-                        hintStyle: TextStyle(color: textSecondary),
-                        prefixIcon: Icon(Icons.person_outline, color: textSecondary),
+                        labelText: "USERNAME",
+                        labelStyle: TextStyle(color: textSecondary, fontSize: 11, letterSpacing: 0.5),
+                        hintText: "johndoe",
+                        hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
+                        prefixIcon: Icon(Icons.person_outline, color: textSecondary, size: 18),
                       ),
                       validator: (value) => value == null || value.isEmpty ? 'Enter username' : null,
                     ),
@@ -428,9 +465,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       keyboardType: TextInputType.emailAddress,
                       style: TextStyle(color: textPrimary),
                       decoration: InputDecoration(
-                        hintText: "Email address",
-                        hintStyle: TextStyle(color: textSecondary),
-                        prefixIcon: Icon(Icons.email_outlined, color: textSecondary),
+                        labelText: "EMAIL ADDRESS",
+                        labelStyle: TextStyle(color: textSecondary, fontSize: 11, letterSpacing: 0.5),
+                        hintText: "user@domain.com",
+                        hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
+                        prefixIcon: Icon(Icons.email_outlined, color: textSecondary, size: 18),
                       ),
                       validator: (value) => value == null || !value.contains('@') ? 'Enter valid email' : null,
                     ),
@@ -441,9 +480,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       obscureText: true,
                       style: TextStyle(color: textPrimary),
                       decoration: InputDecoration(
-                        hintText: "Password (min 8 chars)",
-                        hintStyle: TextStyle(color: textSecondary),
-                        prefixIcon: Icon(Icons.lock_outline, color: textSecondary),
+                        labelText: "PASSWORD (MIN 8 CHARS)",
+                        labelStyle: TextStyle(color: textSecondary, fontSize: 11, letterSpacing: 0.5),
+                        hintText: "••••••••",
+                        hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
+                        prefixIcon: Icon(Icons.lock_outline, color: textSecondary, size: 18),
                       ),
                       validator: (value) => value == null || value.length < 8 ? 'Password must be 8+ chars' : null,
                     ),
@@ -452,12 +493,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     BlocBuilder<AuthBloc, AuthState>(
                       builder: (context, state) {
                         if (state is AuthLoading) {
-                          return const CircularProgressIndicator(color: Color(0xFF6366F1));
+                          return Center(
+                            child: CircularProgressIndicator(color: cobalt),
+                          );
                         }
 
                         return SizedBox(
                           width: double.infinity,
-                          height: 48,
+                          height: 44,
                           child: ElevatedButton(
                             onPressed: () {
                               if (_formKey.currentState!.validate()) {
@@ -469,12 +512,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF6366F1),
-                              foregroundColor: Colors.white,
+                              backgroundColor: cobalt,
+                              foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
                               elevation: 0,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                             ),
-                            child: const Text("Sign Up", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                            child: const Text(
+                              "REGISTER DOSSIER",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ),
                         );
                       },
@@ -483,13 +533,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text("Already have an account? ", style: TextStyle(color: textSecondary, fontSize: 13)),
+                        Text("Already have a dossier? ", style: TextStyle(color: textSecondary, fontSize: 13)),
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
-                          child: const Text(
+                          child: Text(
                             "Sign In",
                             style: TextStyle(
-                              color: Color(0xFF6366F1),
+                              color: cobalt,
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                             ),

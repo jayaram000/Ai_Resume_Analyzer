@@ -97,93 +97,95 @@ Resume Raw Text:
 
 class ResumeComparisonService:
     @staticmethod
-    def get_or_create_snapshot(resume: Resume):
-        from resumes.models import ResumeAnalysisSnapshot
-        snapshot = getattr(resume, "analysis_snapshot", None)
-        if snapshot:
-            return snapshot
-
+    def _extract_skills_and_keywords(resume: Resume):
         parsed = getattr(resume, "parsed_content", None)
-        resume_text = parsed.extracted_text if parsed else "No text found."
+        skills = []
+        if parsed and parsed.extracted_skills:
+            skills = list(parsed.extracted_skills)
         
-        prompt = f"""
-        You are an expert technical recruiter and ATS system.
-        Analyze the following resume and provide a deep analysis snapshot.
-        Your response MUST be a single JSON object matching this schema:
-        {{
-            "ats_score": 0-100,
-            "recruiter_score": 0-100,
-            "health_score": 0-100,
-            "missing_skills": ["skill1", "skill2"],
-            "missing_keywords": ["keyword1"],
-            "improvement_suggestions": ["suggestion1"]
-        }}
-        Resume Text:
-        {resume_text}
-        """
-        try:
-            gemini_result = call_gemini_api(prompt, response_mime_type="application/json")
-        except Exception as e:
-            logger.error(f"Snapshot generation failed: {e}")
-            gemini_result = {
-                "ats_score": 50, "recruiter_score": 50, "health_score": 50,
-                "missing_skills": [], "missing_keywords": [], "improvement_suggestions": []
-            }
+        text = resume.raw_text or (parsed.extracted_text if parsed else "")
+        if not text and hasattr(resume, "sections"):
+            text = " ".join([s.content for s in resume.sections.all()])
+            
+        common_tech = [
+            "Python", "Django", "DRF", "Flutter", "Dart", "JavaScript", "TypeScript",
+            "React", "Node.js", "PostgreSQL", "SQL", "Docker", "Kubernetes", "AWS",
+            "Git", "CI/CD", "REST API", "Microservices", "Redis", "Celery", "Linux",
+            "GraphQL", "MongoDB", "HTML", "CSS", "Agile", "Scrum", "TDD", "System Design"
+        ]
+        
+        found_skills = set(s.lower() for s in skills)
+        if text:
+            lower_text = text.lower()
+            for tech in common_tech:
+                if tech.lower() in lower_text:
+                    found_skills.add(tech.lower())
+        
+        skills_list = [s.title() if len(s) > 3 else s.upper() for s in found_skills]
+        return skills_list, text
 
-        extracted_skills = parsed.extracted_skills if parsed else []
-        extracted_projects = parsed.extracted_projects if parsed else []
-        extracted_experience = parsed.extracted_experience if parsed else []
+    @staticmethod
+    def get_snapshot_data(resume: Resume):
+        latest_analysis = resume.ats_analyses.order_by("-created_at").first()
+        if latest_analysis:
+            ats = latest_analysis.ats_score
+            formatting = latest_analysis.formatting_score or 70
+            completeness = latest_analysis.completeness_score or 70
+            skills_score = latest_analysis.skills_score or 70
+            health = int((ats + formatting + completeness + skills_score) / 4)
+            recruiter = max(20, min(100, int(ats * 0.95)))
+        else:
+            try:
+                from analysis.services.ats_scoring_service import ATSScoringService
+                scores = ATSScoringService.calculate_ats_score(resume)
+                ats = scores.get("ats_score", 65)
+                health = scores.get("completeness_score", 70)
+                recruiter = scores.get("skills_score", 60)
+            except Exception:
+                ats = 65
+                health = 70
+                recruiter = 65
 
-        snapshot = ResumeAnalysisSnapshot.objects.create(
-            resume=resume,
-            ats_score=gemini_result.get("ats_score", 50),
-            recruiter_score=gemini_result.get("recruiter_score", 50),
-            health_score=gemini_result.get("health_score", 50),
-            missing_skills=gemini_result.get("missing_skills", []),
-            missing_keywords=gemini_result.get("missing_keywords", []),
-            improvement_suggestions=gemini_result.get("improvement_suggestions", []),
-            extracted_skills=extracted_skills,
-            extracted_projects=extracted_projects,
-            extracted_experience=extracted_experience
-        )
-        return snapshot
+        skills, text = ResumeComparisonService._extract_skills_and_keywords(resume)
+        return {
+            "ats_score": ats,
+            "health_score": health,
+            "recruiter_score": recruiter,
+            "skills": skills,
+            "text": text,
+        }
 
     @staticmethod
     def compare_resumes(resume_old: Resume, resume_new: Resume):
-        from resumes.models import ResumeComparison
-        
-        snap_old = ResumeComparisonService.get_or_create_snapshot(resume_old)
-        snap_new = ResumeComparisonService.get_or_create_snapshot(resume_new)
+        import uuid
+        snap_old = ResumeComparisonService.get_snapshot_data(resume_old)
+        snap_new = ResumeComparisonService.get_snapshot_data(resume_new)
 
-        skills_old = set(snap_old.extracted_skills)
-        skills_new = set(snap_new.extracted_skills)
-        added_skills = list(skills_new - skills_old)
-        removed_skills = list(skills_old - skills_new)
+        skills_old = set(snap_old["skills"])
+        skills_new = set(snap_new["skills"])
+        added_skills = sorted(list(skills_new - skills_old))
+        removed_skills = sorted(list(skills_old - skills_new))
 
-        keywords_old = set(snap_old.missing_keywords)
-        keywords_new = set(snap_new.missing_keywords)
-        # Keywords "added" means keywords that were missing in OLD but are now PRESENT in NEW
-        # So they are in keywords_old but NOT in keywords_new
-        added_keywords = list(keywords_old - keywords_new)
-        # Keywords "removed" means keywords that were present in OLD but missing in NEW
-        removed_keywords = list(keywords_new - keywords_old)
+        keywords_old = set(w.lower() for w in snap_old["skills"])
+        keywords_new = set(w.lower() for w in snap_new["skills"])
+        added_keywords = [k.title() for k in (keywords_new - keywords_old)]
+        removed_keywords = [k.title() for k in (keywords_old - keywords_new)]
 
-        ats_diff = snap_new.ats_score - snap_old.ats_score
-        recruiter_diff = snap_new.recruiter_score - snap_old.recruiter_score
-        health_diff = snap_new.health_score - snap_old.health_score
+        ats_diff = snap_new["ats_score"] - snap_old["ats_score"]
+        recruiter_diff = snap_new["recruiter_score"] - snap_old["recruiter_score"]
+        health_diff = snap_new["health_score"] - snap_old["health_score"]
 
         prompt = f"""
-        You are an expert career coach. Compare these two resume versions based on their analysis snapshots.
-        
+        You are an expert career coach. Compare these two resume versions based on their analysis snapshots:
         Old Version:
-        ATS: {snap_old.ats_score}, Recruiter: {snap_old.recruiter_score}, Health: {snap_old.health_score}
-        Skills: {snap_old.extracted_skills}
-        
+        ATS: {snap_old['ats_score']}, Recruiter: {snap_old['recruiter_score']}, Health: {snap_old['health_score']}
+        Skills: {snap_old['skills']}
+
         New Version:
-        ATS: {snap_new.ats_score}, Recruiter: {snap_new.recruiter_score}, Health: {snap_new.health_score}
-        Skills: {snap_new.extracted_skills}
+        ATS: {snap_new['ats_score']}, Recruiter: {snap_new['recruiter_score']}, Health: {snap_new['health_score']}
+        Skills: {snap_new['skills']}
         Added Skills: {added_skills}
-        
+
         Provide a short (2-3 sentences) professional summary of the improvement, acting as the AI Career Copilot.
         Return plain text.
         """
@@ -194,19 +196,41 @@ class ResumeComparisonService:
             else:
                 ai_summary = str(ai_summary_dict)
         except Exception:
-            ai_summary = f"Your updated resume shows an ATS score change of {ats_diff} and a health score change of {health_diff}."
+            delta_str = f"+{ats_diff}" if ats_diff >= 0 else f"{ats_diff}"
+            if added_skills:
+                skills_highlight = f", incorporating key competencies such as {', '.join(added_skills[:3])}"
+            else:
+                skills_highlight = ""
+            ai_summary = f"Your revised resume shows an ATS score progression of {delta_str} points and a health score change of {health_diff} points{skills_highlight}. The structure demonstrates improved keyword alignment."
 
-        comparison = ResumeComparison.objects.create(
-            user=resume_new.user,
-            before_resume=resume_old,
-            after_resume=resume_new,
-            ats_difference=ats_diff,
-            recruiter_difference=recruiter_diff,
-            health_difference=health_diff,
-            added_skills=added_skills,
-            removed_skills=removed_skills,
-            added_keywords=added_keywords,
-            removed_keywords=removed_keywords,
-            ai_summary=ai_summary
-        )
-        return comparison
+        return {
+            "id": str(uuid.uuid4()),
+            "before_resume": {
+                "id": str(resume_old.id),
+                "title": resume_old.title,
+                "version": getattr(resume_old, "version", 1),
+                "analysis_snapshot": {
+                    "ats_score": snap_old["ats_score"],
+                    "health_score": snap_old["health_score"],
+                    "recruiter_score": snap_old["recruiter_score"],
+                },
+            },
+            "after_resume": {
+                "id": str(resume_new.id),
+                "title": resume_new.title,
+                "version": getattr(resume_new, "version", 1),
+                "analysis_snapshot": {
+                    "ats_score": snap_new["ats_score"],
+                    "health_score": snap_new["health_score"],
+                    "recruiter_score": snap_new["recruiter_score"],
+                },
+            },
+            "ats_difference": ats_diff,
+            "recruiter_difference": recruiter_diff,
+            "health_difference": health_diff,
+            "added_skills": added_skills,
+            "removed_skills": removed_skills,
+            "added_keywords": added_keywords,
+            "removed_keywords": removed_keywords,
+            "ai_summary": ai_summary.strip(),
+        }

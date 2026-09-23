@@ -19,6 +19,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
+    is_premium = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -28,10 +29,34 @@ class UserSerializer(serializers.ModelSerializer):
             "username",
             "role",
             "is_verified",
+            "is_staff",
+            "is_superuser",
+            "is_premium",
             "created_at",
             "profile"
         ]
-        read_only_fields = ["id", "role", "is_verified", "created_at"]
+        read_only_fields = ["id", "role", "is_verified", "is_staff", "is_superuser", "is_premium", "created_at"]
+
+    def get_is_premium(self, obj):
+        if obj.is_staff or obj.is_superuser or getattr(obj, "role", "USER") == "ADMIN":
+            return True
+        from django.utils import timezone
+        from subscriptions.models import UserSubscription
+        now = timezone.now()
+        return UserSubscription.objects.filter(
+            user=obj,
+            status="active",
+            start_date__lte=now,
+            end_date__gte=now
+        ).exclude(plan__price=0).exists()
+
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data["user"] = UserSerializer(self.user).data
+        return data
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)

@@ -6,5 +6,6 @@ router = DefaultRouter()
 router.register(r"", ResumeViewSet, basename="resume")
 
 urlpatterns = [
+    path("compare/", ResumeViewSet.as_view({"post": "compare"}), name="resume-compare"),
     path("", include(router.urls)),
 ]

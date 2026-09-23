@@ -5,7 +5,8 @@ from django.db.models import Count
 from common.permissions import IsPremiumUser
 from jobs.models import Job, JobRecommendation, SelectedJob
 from jobs.serializers import JobSerializer, JobRecommendationSerializer, SelectedJobSerializer
-from jobs.services import JobAggregationService, calculate_recommendations
+from jobs.services.job_ranking_service import JobAggregationService, calculate_recommendations
+from jobs.services.application_tracker_service import ApplicationTrackerService
 
 class JobSearchView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -173,7 +174,12 @@ class JobStatsView(APIView):
             result[status_code] = stat["count"]
             result["TOTAL"] += stat["count"]
             
-        return Response({"success": True, "data": result})
+        funnel_data = ApplicationTrackerService.get_conversion_funnel(request.user)
+        return Response({
+            "success": True,
+            "data": result,
+            "funnel": funnel_data
+        })
 
 class ResumeMatchJobView(APIView):
     permission_classes = [permissions.IsAuthenticated]
