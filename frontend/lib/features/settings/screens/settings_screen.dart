@@ -102,13 +102,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icon(Icons.logout_rounded, color: brick, size: 20),
             const SizedBox(width: 8),
             Text(
-              "CONFIRM SIGN OUT",
-              style: TextStyle(color: ink, fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+              "Log Out",
+              style: TextStyle(color: ink, fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3),
             ),
           ],
         ),
         content: Text(
-          "Are you sure you want to sign out of your account? You will need to authenticate again to access your dossiers.",
+          "Are you sure you want to log out of your account?",
           style: TextStyle(color: inkSoft, fontSize: 13),
         ),
         actions: [
@@ -131,7 +131,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
-            child: const Text("Sign Out", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text("Log Out", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -200,7 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Unlock unlimited resume audits, advanced live market gap tracking, custom PDF dossier exports, and AI career path simulations.",
+                "Unlock unlimited resume scans, advanced live market gap tracking, custom PDF exports, and AI career path simulations.",
                 style: TextStyle(color: inkSoft, fontSize: 13, height: 1.4),
               ),
               const SizedBox(height: 16),
@@ -326,7 +326,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               Icon(Icons.badge_outlined, size: 18, color: cobalt),
                               const SizedBox(width: 8),
                               Text(
-                                "DOSSIER PROFILE CONFIGURATION",
+                                "PROFILE SETTINGS",
                                 style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                               ),
                             ],
@@ -429,7 +429,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                                     ),
                                     child: const Text(
-                                      "SAVE DOSSIER PROFILE",
+                                      "SAVE PROFILE",
                                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                                     ),
                                   ),
@@ -469,7 +469,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   _isPremium
-                                      ? "Unlocked full premium tier dossier access"
+                                      ? "Unlocked full premium access"
                                       : "Upgrade to unlock advanced roadmaps and interview simulators",
                                   style: TextStyle(color: inkSoft, fontSize: 12),
                                 ),
@@ -507,14 +507,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "SESSION & SECURITY CREDENTIALS",
+                            "ACCOUNT & SECURITY",
                             style: TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 0.5),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             _userEmail.isNotEmpty
-                                ? "Authenticated as $_userEmail"
-                                : "Manage your active session and authentication.",
+                                ? "Signed in as $_userEmail"
+                                : "Manage your account session.",
                             style: TextStyle(color: inkSoft, fontSize: 12),
                           ),
                           const SizedBox(height: 18),
@@ -525,7 +525,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               onPressed: () => _confirmLogout(context),
                               icon: Icon(Icons.logout_rounded, color: brick, size: 16),
                               label: Text(
-                                "SIGN OUT OF DOSSIER",
+                                "LOG OUT",
                                 style: TextStyle(
                                   color: brick,
                                   fontWeight: FontWeight.w700,

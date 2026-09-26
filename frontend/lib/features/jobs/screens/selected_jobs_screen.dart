@@ -382,7 +382,7 @@ class _SelectedJobsScreenState extends State<SelectedJobsScreen> with SingleTick
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    "Application Dossier Pipeline",
+                                    "Job Application Tracker",
                                     style: AppTypography.displayHeading(
                                       fontSize: 20,
                                       color: textPrimary,

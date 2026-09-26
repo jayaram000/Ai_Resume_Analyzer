@@ -8,6 +8,8 @@ from drf_spectacular.utils import extend_schema
 
 from resumes.models import Resume
 from resumes.services import ResumeComparisonService
+from common.permissions import HasUsageQuota
+from common.usage_limiter import consume_usage
 from resumes.serializers import (
     ResumeDetailSerializer,
     UploadResumeRequestSerializer,
@@ -34,6 +36,11 @@ class ResumeViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return self.resume_repo.list_by_user(self.request.user)
+
+    def get_permissions(self):
+        if self.action in ['create', 'compare']:
+            return [permissions.IsAuthenticated(), HasUsageQuota()]
+        return [permissions.IsAuthenticated()]
 
     @extend_schema(
         summary="Upload Resume Document",
@@ -63,13 +70,19 @@ class ResumeViewSet(viewsets.ModelViewSet):
                 custom_title=custom_title,
             )
 
+            _, remaining, reset_at = consume_usage(request.user, "ats_scan")
+
             response_serializer = UploadResumeResponseSerializer({
                 "status": "success",
                 "message": "File received. Ingestion job initiated.",
                 "data": result_data,
             })
 
-            return Response(response_serializer.data, status=status.HTTP_202_ACCEPTED)
+            resp_data = dict(response_serializer.data)
+            resp_data["usage_remaining"] = remaining
+            resp_data["reset_at"] = reset_at
+
+            return Response(resp_data, status=status.HTTP_202_ACCEPTED)
 
         except ValidationError as val_err:
             logger.warning(f"Validation error during resume upload for user {request.user.id}: {val_err.message}")
@@ -118,7 +131,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
         description="Audits diffs between two resumes, computing ATS metrics and skill/keyword adjustments.",
         responses={200: "Comparison Result", 400: "Bad Request", 404: "Not Found"},
     )
-    @action(detail=False, methods=["post"], url_path="compare")
+    @action(detail=False, methods=["post"], url_path="compare", permission_classes=[permissions.IsAuthenticated, HasUsageQuota])
     def compare(self, request, *args, **kwargs):
         before_id = request.data.get("before_resume_id")
         after_id = request.data.get("after_resume_id")
@@ -140,7 +153,13 @@ class ResumeViewSet(viewsets.ModelViewSet):
 
         try:
             comparison_result = ResumeComparisonService.compare_resumes(resume_old, resume_new)
-            return Response({"success": True, "data": comparison_result}, status=status.HTTP_200_OK)
+            _, remaining, reset_at = consume_usage(request.user, "resume_comparison")
+            return Response({
+                "success": True, 
+                "data": comparison_result,
+                "usage_remaining": remaining,
+                "reset_at": reset_at,
+            }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Resume comparison error: {e}", exc_info=True)
             return Response(

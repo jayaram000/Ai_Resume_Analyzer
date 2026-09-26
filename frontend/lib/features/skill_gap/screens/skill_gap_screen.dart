@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart' as import_url_launcher;
 import 'package:frontend/core/di/injection.dart';
 import 'package:frontend/core/utils/file_downloader.dart';
 import 'package:frontend/features/skill_gap/domain/entities/skill_gap_entities.dart';
@@ -843,6 +844,151 @@ class _SkillGapScreenState extends State<SkillGapScreen> {
                     );
                   },
                 ),
+                const SizedBox(height: 28),
+              ],
+
+              // RECOMMENDED LEARNING RESOURCES
+              if (_gapData!.learningResources.isNotEmpty) ...[
+                Builder(builder: (context) {
+                  final courses = _gapData!.learningResources.where((r) => r['type'].toString().toLowerCase().contains('course')).toList();
+                  final videos = _gapData!.learningResources.where((r) => !r['type'].toString().toLowerCase().contains('course')).toList();
+                  
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (courses.isNotEmpty)
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: paperAlt,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: rule),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.school_rounded, color: cobalt, size: 20),
+                                        const SizedBox(width: 8),
+                                        Text("Recommended Courses", style: TextStyle(color: cobalt, fontSize: 15, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 14),
+                                    ...courses.map((c) {
+                                      final cTitle = c['title'] ?? 'Course';
+                                      final cPlatform = c['platform'] ?? 'Udemy';
+                                      final cUrl = c['url'] ?? '';
+                                      return Container(
+                                        margin: const EdgeInsets.only(bottom: 12),
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: paper,
+                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(color: rule),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(cTitle.toString(), style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
+                                            const SizedBox(height: 4),
+                                            Text("Platform: $cPlatform", style: TextStyle(color: textSecondary, fontSize: 11)),
+                                            const SizedBox(height: 8),
+                                            InkWell(
+                                              onTap: () async {
+                                                if (cUrl.toString().isNotEmpty) {
+                                                  final Uri url = Uri.parse(cUrl.toString());
+                                                  import_url_launcher.launchUrl(url, mode: import_url_launcher.LaunchMode.externalApplication);
+                                                }
+                                              },
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.open_in_new_rounded, size: 13, color: cobalt),
+                                                  const SizedBox(width: 4),
+                                                  Text("View Course", style: TextStyle(color: cobalt, fontSize: 12, fontWeight: FontWeight.bold)),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          if (courses.isNotEmpty && videos.isNotEmpty) const SizedBox(width: 16),
+                          if (videos.isNotEmpty)
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: paperAlt,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: rule),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(Icons.play_circle_fill_rounded, color: brick, size: 20),
+                                        const SizedBox(width: 8),
+                                        Text("Curated Video Masterclasses", style: TextStyle(color: brick, fontSize: 15, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 14),
+                                    ...videos.map((v) {
+                                      final vTitle = v['title'] ?? 'Tutorial';
+                                      final vPlatform = v['platform'] ?? 'YouTube';
+                                      final vUrl = v['url'] ?? '';
+                                      return Container(
+                                        margin: const EdgeInsets.only(bottom: 12),
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: paper,
+                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(color: rule),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(vTitle.toString(), style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
+                                            const SizedBox(height: 4),
+                                            Text("Channel: $vPlatform", style: TextStyle(color: textSecondary, fontSize: 11)),
+                                            const SizedBox(height: 8),
+                                            InkWell(
+                                              onTap: () async {
+                                                if (vUrl.toString().isNotEmpty) {
+                                                  final Uri url = Uri.parse(vUrl.toString());
+                                                  import_url_launcher.launchUrl(url, mode: import_url_launcher.LaunchMode.externalApplication);
+                                                }
+                                              },
+                                              child: Row(
+                                                children: [
+                                                  Icon(Icons.open_in_new_rounded, size: 13, color: brick),
+                                                  const SizedBox(width: 4),
+                                                  Text("Watch Tutorial", style: TextStyle(color: brick, fontSize: 12, fontWeight: FontWeight.bold)),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  );
+                }),
                 const SizedBox(height: 28),
               ],
 

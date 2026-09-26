@@ -2,6 +2,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:dio/dio.dart';
 import 'package:frontend/core/storage/secure_storage.dart';
+import 'package:frontend/core/di/injection.dart';
+import 'package:frontend/features/dashboard/cubit/usage_cubit.dart';
 
 class ApiClient {
   final Dio dio;
@@ -35,7 +37,29 @@ class ApiClient {
         }
         return handler.next(options);
       },
+      onResponse: (response, handler) {
+        if (response.data is Map<String, dynamic>) {
+          try {
+            final data = response.data as Map<String, dynamic>;
+            if (data.containsKey('usage_remaining')) {
+              if (sl.isRegistered<UsageCubit>()) {
+                sl<UsageCubit>().updateFromApiResponse(data);
+              }
+            }
+          } catch (_) {}
+        }
+        return handler.next(response);
+      },
       onError: (DioException error, handler) async {
+        // Automatically sync usage quota if a 429 occurs
+        if (error.response?.statusCode == 429 && error.response?.data is Map<String, dynamic>) {
+          try {
+            if (sl.isRegistered<UsageCubit>()) {
+              sl<UsageCubit>().updateFromApiResponse(error.response!.data as Map<String, dynamic>);
+            }
+          } catch (_) {}
+        }
+
         // Automatic Refresh on 401 errors
         if (error.response?.statusCode == 401 && error.requestOptions.path != 'auth/login/') {
           final refreshToken = await _secureStorage.getRefreshToken();

@@ -7,6 +7,7 @@ import 'package:frontend/features/auth/bloc/auth_state.dart';
 import 'package:frontend/features/dashboard/screens/dashboard_screen.dart';
 import 'package:frontend/features/auth/screens/forgot_password_screen.dart';
 
+import 'package:frontend/features/dashboard/cubit/usage_cubit.dart';
 import 'package:frontend/core/theme/app_theme.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 
@@ -25,6 +26,14 @@ class MyApp extends StatelessWidget {
       providers: [
         BlocProvider<AuthBloc>(
           create: (context) => sl<AuthBloc>()..add(AuthCheckRequested()),
+        ),
+        BlocProvider<UsageCubit>(
+          create: (context) {
+            if (!sl.isRegistered<UsageCubit>()) {
+              sl.registerLazySingleton<UsageCubit>(() => UsageCubit());
+            }
+            return sl<UsageCubit>()..fetchUsageStatus();
+          },
         ),
       ],
       child: ValueListenableBuilder<ThemeMode>(
@@ -125,10 +134,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.folder_open_rounded, size: 14, color: cobalt),
+                          Icon(Icons.lock_outline_rounded, size: 14, color: cobalt),
                           const SizedBox(width: 6),
                           Text(
-                            "DOSSIER ACCESS // AUTHENTICATION",
+                            "WELCOME BACK // SIGN IN",
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -152,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "Enter your verified credentials to access career analysis dossiers.",
+                    "Enter your credentials to access your resumes and analysis.",
                     style: TextStyle(
                       fontSize: 13,
                       color: textSecondary,
@@ -417,7 +426,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             Icon(Icons.person_add_outlined, size: 14, color: cobalt),
                             const SizedBox(width: 6),
                             Text(
-                              "DOSSIER ONBOARDING // NEW USER",
+                              "CREATE ACCOUNT // GET STARTED",
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
@@ -431,7 +440,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      "Create Dossier Account",
+                      "Create Free Account",
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
@@ -441,7 +450,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      "Register a new profile to track resumes, audits, and roadmap progress.",
+                      "Register a new account to analyze resumes and track career goals.",
                       style: TextStyle(fontSize: 13, color: textSecondary),
                     ),
                     const SizedBox(height: 24),
@@ -518,7 +527,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                             ),
                             child: const Text(
-                              "REGISTER DOSSIER",
+                              "CREATE ACCOUNT",
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
@@ -533,7 +542,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text("Already have a dossier? ", style: TextStyle(color: textSecondary, fontSize: 13)),
+                        Text("Already have an account? ", style: TextStyle(color: textSecondary, fontSize: 13)),
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
                           child: Text(

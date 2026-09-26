@@ -203,7 +203,7 @@ class DocumentCard extends StatelessWidget {
                               children: [
                                 Icon(Icons.visibility_outlined, size: 15, color: ink),
                                 const SizedBox(width: 8),
-                                Text("View Dossier", style: AppTypography.bodyRegular(color: ink, fontSize: 12.5)),
+                                Text("View Analysis", style: AppTypography.bodyRegular(color: ink, fontSize: 12.5)),
                               ],
                             ),
                           ),

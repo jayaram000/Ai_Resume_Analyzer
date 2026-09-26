@@ -50,7 +50,7 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
       if (result.isSuccess) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Dossier removed from file.")),
+            const SnackBar(content: Text("Resume deleted successfully.")),
           );
         }
         _loadResumes();
@@ -64,8 +64,8 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
     }
   }
 
-  void _openAnalysis(ResumeEntity res) {
-    Navigator.push(
+  Future<void> _openAnalysis(ResumeEntity res) async {
+    final targetIndex = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ATSAnalysisScreen(
@@ -75,6 +75,11 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
         ),
       ),
     );
+    if (targetIndex is int && mounted) {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(targetIndex);
+      }
+    }
   }
 
   Future<void> _openPdf(String? fileUrl) async {
@@ -116,14 +121,14 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "WORKING FILES // ARCHIVE",
+                    "MY RESUMES",
                     style: AppTypography.monoLabel(color: inkSoft, fontSize: 10.5).copyWith(letterSpacing: 0.8),
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       Text(
-                        "Dossier Archive",
+                        "My Resumes",
                         style: AppTypography.displayHero(color: ink, fontSize: 24),
                       ),
                       const SizedBox(width: 10),
@@ -135,7 +140,7 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
                           border: Border.all(color: rule, width: 0.8),
                         ),
                         child: Text(
-                          "${_resumes.length} ON FILE",
+                          "${_resumes.length} TOTAL",
                           style: AppTypography.monoLabel(color: inkSoft, fontSize: 10).copyWith(fontWeight: FontWeight.w600),
                         ),
                       ),
@@ -153,7 +158,7 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
                   );
                 },
                 icon: const Icon(Icons.compare_arrows_rounded, size: 16),
-                label: const Text("Compare Dossiers"),
+                label: const Text("Compare Resumes"),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: cobalt,
                   side: BorderSide(color: cobalt, width: 1.2),
@@ -169,7 +174,7 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
           Divider(color: rule, height: 1, thickness: 1),
           const SizedBox(height: 20),
 
-          // Dossier List
+          // Resume List
           if (_resumes.isEmpty)
             Expanded(
               child: Center(
@@ -186,12 +191,12 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
                       Icon(Icons.folder_open_outlined, color: inkSoft, size: 44),
                       const SizedBox(height: 14),
                       Text(
-                        "NO DOSSIERS ON FILE",
+                        "NO RESUMES UPLOADED",
                         style: AppTypography.monoLabel(color: ink, fontSize: 13).copyWith(letterSpacing: 0.6, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        "Upload your first resume file to initialize ATS audit and automated tracking.",
+                        "Upload your first resume to get ATS scores and AI improvements.",
                         style: AppTypography.bodyRegular(color: inkSoft, fontSize: 13),
                         textAlign: TextAlign.center,
                       ),

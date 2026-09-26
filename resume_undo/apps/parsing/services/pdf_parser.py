@@ -69,7 +69,8 @@ class PDFParsingService:
     def _pdfplumber_column_sort(file_path: str) -> str:
         """
         Sorts text blocks by column boundary algorithm specified in SAD Section 2:
-        Block Order = Page * 10000 + floor(X0 / Column Boundary) * 5000 + Y0
+        Block Order = Page * 100000 + floor(X0 / Column Boundary) * 10000 + rounded(Y0)
+        Groups words on the same line and preserves newlines.
         """
         extracted_blocks = []
         with pdfplumber.open(file_path) as pdf:
@@ -77,22 +78,37 @@ class PDFParsingService:
                 page_width = page.width or 600
                 col_boundary = page_width / 2.0  # Split down center
 
-                words = page.extract_words()
+                words = page.extract_words(keep_blank_chars=True)
                 if not words:
                     continue
 
-                # Group words into line blocks
                 for word in words:
                     x0 = word.get("x0", 0)
                     top = word.get("top", 0)
                     col_index = 0 if x0 < col_boundary else 1
                     
-                    block_order = (page_idx * 10000) + (col_index * 5000) + top
-                    extracted_blocks.append((block_order, word.get("text", "")))
+                    # Round top to nearest 3 points to group words on same visual line
+                    top_rounded = round(top / 3.0) * 3.0
+                    
+                    block_order = (page_idx * 100000) + (col_index * 10000) + top_rounded
+                    extracted_blocks.append((block_order, x0, word.get("text", "")))
 
-        # Sort blocks by calculated order
-        extracted_blocks.sort(key=lambda item: item[0])
+        # Sort by block_order (page, col, line), then by x0 (left-to-right)
+        extracted_blocks.sort(key=lambda item: (item[0], item[1]))
         
-        # Combine text into lines
-        sorted_text = " ".join([word_text for _, word_text in extracted_blocks])
-        return sorted_text.strip()
+        lines = []
+        current_line = []
+        last_block = None
+        
+        for block_order, x0, word_text in extracted_blocks:
+            if last_block is not None and block_order != last_block:
+                lines.append(" ".join(current_line))
+                current_line = []
+                
+            current_line.append(word_text)
+            last_block = block_order
+            
+        if current_line:
+            lines.append(" ".join(current_line))
+            
+        return "\n".join(lines).strip()

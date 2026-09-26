@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/di/injection.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/widgets/usage_quota_badge.dart';
+import 'package:frontend/core/widgets/premium_plan_paywall.dart';
 
 class ResumeComparisonScreen extends StatefulWidget {
   const ResumeComparisonScreen({super.key});
@@ -81,6 +83,25 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
       String msg = "Failed to perform comparison. Verify database record.";
       try {
         final dynamic err = e;
+        if (err?.response?.statusCode == 429) {
+          final data = err.response.data;
+          final String? resetStr = data is Map ? data['reset_at'] : null;
+          String timeMsg = "";
+          if (resetStr != null) {
+            final resetTime = DateTime.tryParse(resetStr)?.toLocal();
+            if (resetTime != null) {
+              final diff = resetTime.difference(DateTime.now());
+              timeMsg = " Your next slot unlocks in ${diff.inHours}h ${diff.inMinutes.remainder(60)}m.";
+            }
+          }
+          if (mounted) {
+            PremiumPlanPaywall.showAsDialog(
+              context,
+              featureTitle: "Free Comparison Quota Reached",
+              featureDescription: "You've used all 3 free actions in your current 5-hour window.$timeMsg Upgrade to Pro for unlimited instant comparisons.",
+            );
+          }
+        }
         if (err?.response?.data != null) {
           final data = err.response.data;
           if (data is Map && data['message'] != null) {
@@ -115,7 +136,7 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
       backgroundColor: paper,
       appBar: AppBar(
         title: Text(
-          "VERSION INTELLIGENCE // DIFF AUDIT",
+          "RESUME COMPARISON // SIDE-BY-SIDE",
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
@@ -151,7 +172,7 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
                             Icon(Icons.compare_arrows_rounded, size: 18, color: cobalt),
                             const SizedBox(width: 8),
                             Text(
-                              "SELECT RESUME DOSSIERS FOR COMPARATIVE AUDIT",
+                              "SELECT TWO RESUMES TO COMPARE",
                               style: TextStyle(
                                 color: ink,
                                 fontSize: 12,
@@ -212,6 +233,8 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
+                        const Center(child: UsageQuotaBadge(compact: true)),
+                        const SizedBox(height: 12),
                         _isComparing
                             ? Center(child: CircularProgressIndicator(color: cobalt))
                             : SizedBox(

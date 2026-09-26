@@ -198,6 +198,20 @@ Your output MUST be valid JSON with this exact schema:
     "Reframe past backend and architectural achievements with strong metrics (e.g. throughput, latency reductions, scalability).",
     "Highlight clean architecture, design patterns, and cross-functional leadership in your experience bullets.",
     "Add a dedicated 'System Architecture & Cloud' section to showcase your modern backend stack."
+  ],
+  "learning_resources": [
+    {{
+      "title": "Spring Boot 3, Spring 6 & Hibernate for Beginners",
+      "platform": "Udemy",
+      "type": "Course",
+      "url": "https://www.udemy.com/course/spring-hibernate-tutorial/"
+    }},
+    {{
+      "title": "System Design Interview Prep",
+      "platform": "YouTube",
+      "type": "Playlist",
+      "url": "https://www.youtube.com/results?search_query=system+design+interview+playlist"
+    }}
   ]
 }}
 """
@@ -219,6 +233,7 @@ Your output MUST be valid JSON with this exact schema:
         recommended_projects = ai_data.get("recommended_projects", [])
         recommended_certifications = ai_data.get("recommended_certifications", [])
         resume_transition_tips = ai_data.get("resume_transition_tips", [])
+        learning_resources = ai_data.get("learning_resources", [])
 
         if not categorized_gaps:
             role_lower = target_role.lower()
@@ -300,6 +315,22 @@ Your output MUST be valid JSON with this exact schema:
                 f"Highlight competencies in {', '.join(missing_skills_list[:3])} prominently in your technical skills summary."
             ]
 
+        if not learning_resources:
+            learning_resources = [
+                {
+                    "title": f"Complete {target_role} Masterclass",
+                    "platform": "Udemy",
+                    "type": "Course",
+                    "url": f"https://www.udemy.com/courses/search/?q={target_role.replace(' ', '+')}"
+                },
+                {
+                    "title": f"{target_role} Interview Preparation",
+                    "platform": "YouTube",
+                    "type": "Playlist",
+                    "url": f"https://www.youtube.com/results?search_query={target_role.replace(' ', '+')}+interview+preparation"
+                }
+            ]
+
         # Persist analysis in database
         gap, created = SkillGapAnalysis.objects.update_or_create(
             user=user,
@@ -317,6 +348,7 @@ Your output MUST be valid JSON with this exact schema:
                         "recommended_projects": recommended_projects,
                         "recommended_certifications": recommended_certifications,
                         "resume_transition_tips": resume_transition_tips,
+                        "learning_resources": learning_resources,
                     }
                 ],
                 "roadmap": roadmap
@@ -337,6 +369,7 @@ Your output MUST be valid JSON with this exact schema:
             "recommended_projects": recommended_projects,
             "recommended_certifications": recommended_certifications,
             "resume_transition_tips": resume_transition_tips,
+            "learning_resources": learning_resources,
         }
 
 

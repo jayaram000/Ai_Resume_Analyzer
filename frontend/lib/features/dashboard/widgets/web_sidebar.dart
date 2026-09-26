@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/core/widgets/folder_tab_nav_item.dart';
+import 'package:frontend/core/widgets/usage_quota_badge.dart';
+
+// Casefile Navigation Sidebar
 
 class WebSidebar extends StatelessWidget {
   final int selectedIndex;
@@ -51,7 +54,7 @@ class WebSidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // BRAND DOSSIER HEADER
+          // BRAND HEADER
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 24, 18, 20),
             child: Row(
@@ -65,7 +68,7 @@ class WebSidebar extends StatelessWidget {
                     border: Border.all(color: cobalt.withValues(alpha: 0.4), width: 1),
                   ),
                   child: Center(
-                    child: Icon(Icons.inventory_2_outlined, color: cobalt, size: 18),
+                    child: Icon(Icons.description_outlined, color: cobalt, size: 18),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -73,7 +76,7 @@ class WebSidebar extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Casefile',
+                      'ResumeAI',
                       style: AppTypography.displayHeading(
                         color: ink,
                         fontSize: 17,
@@ -81,7 +84,7 @@ class WebSidebar extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Career Working File',
+                      'Career Copilot',
                       style: AppTypography.monoLabel(
                         color: inkSoft,
                         fontSize: 10,
@@ -101,7 +104,7 @@ class WebSidebar extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             child: Text(
-              "DOSSIER INDEX",
+              "NAVIGATION",
               style: AppTypography.monoLabel(
                 color: inkSoft,
                 fontSize: 10,
@@ -130,9 +133,15 @@ class WebSidebar extends StatelessWidget {
             ),
           ),
 
-          // PRO TIER CASEFILE SUMMARY CARD
+          // FREEMIUM USAGE INDICATOR
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            child: UsageQuotaBadge(compact: true, showUpgradeAction: false),
+          ),
+
+          // PRO TIER SUMMARY CARD
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -146,13 +155,13 @@ class WebSidebar extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        isPremium ? Icons.verified_outlined : Icons.folder_special_outlined,
+                        isPremium ? Icons.verified_outlined : Icons.star_border_rounded,
                         color: isPremium ? forest : ochre,
                         size: 16,
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        isPremium ? 'Active Clearance' : 'Executive Tier',
+                        isPremium ? 'Pro Member' : 'Free Plan',
                         style: AppTypography.bodyRegular(
                           color: ink,
                           fontSize: 12.5,
@@ -163,8 +172,8 @@ class WebSidebar extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     isPremium
-                        ? 'Unlimited access to roadmaps, skill blueprints & exportable dossiers.'
-                        : 'Unlock automated roadmaps, skill gap audits & executive reports.',
+                        ? 'Unlimited access to resume scans, skill blueprints & PDF exports.'
+                        : 'Unlock unlimited AI scans, skill gap analysis & job tailoring.',
                     style: AppTypography.bodyRegular(
                       color: inkSoft,
                       fontSize: 11,
@@ -186,7 +195,7 @@ class WebSidebar extends StatelessWidget {
                           ),
                         ),
                         child: Text(
-                          'Upgrade Access',
+                          'Upgrade to Pro',
                           style: AppTypography.buttonText(
                             color: cobalt,
                             fontSize: 11.5,
@@ -219,7 +228,7 @@ class WebSidebar extends StatelessWidget {
                       Icon(Icons.logout_rounded, color: brick, size: 16),
                       const SizedBox(width: 10),
                       Text(
-                        'Close Dossier',
+                        'Log Out',
                         style: AppTypography.bodyRegular(
                           color: brick,
                           fontSize: 12.5,

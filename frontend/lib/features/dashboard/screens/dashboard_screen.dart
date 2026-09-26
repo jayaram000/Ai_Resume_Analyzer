@@ -20,6 +20,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:frontend/features/auth/bloc/auth_bloc.dart';
 import 'package:frontend/features/auth/bloc/auth_event.dart';
 import 'package:frontend/core/widgets/premium_plan_paywall.dart';
+import 'package:frontend/core/widgets/usage_quota_badge.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String email;
@@ -156,9 +157,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (mounted) await _loadDashboardData();
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Upload error: ${e.toString()}")),
-        );
+        if (mounted) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final isQuota429 = (e is DioException && e.response?.statusCode == 429) ||
+              e.toString().contains("429");
+
+          if (isQuota429) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(Icons.hourglass_empty_rounded, color: Colors.white, size: 18),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "Please upgrade to Premium or wait for 5 hours.",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: AppColors.resolveBrick(isDark),
+                duration: const Duration(seconds: 4),
+                action: SnackBarAction(
+                  label: "UPGRADE",
+                  textColor: Colors.white,
+                  onPressed: () => PremiumPlanPaywall.showAsDialog(
+                    context,
+                    featureTitle: "Unlimited Resume Scans",
+                    featureDescription: "Remove the 3-scan limit and unlock instant, rolling-free access across all AI auditing tools.",
+                  ),
+                ),
+              ),
+            );
+
+            PremiumPlanPaywall.showAsDialog(
+              context,
+              featureTitle: "Free Scan Quota Reached",
+              featureDescription: "You have completed your 3 free scans. Please upgrade to Premium or wait for 5 hours.",
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Upload error: ${e.toString()}")),
+            );
+          }
+        }
       } finally {
         if (mounted) {
           setState(() {
@@ -190,18 +233,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Icon(Icons.logout_rounded, color: AppColors.resolveBrick(isDark), size: 20),
             const SizedBox(width: 8),
             Text(
-              "CONFIRM SIGN OUT",
+              "Log Out",
               style: TextStyle(
                 color: AppColors.resolveInk(isDark),
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
+                letterSpacing: 0.3,
               ),
             ),
           ],
         ),
         content: Text(
-          "Are you sure you want to sign out of your account? You will be redirected to the login screen.",
+          "Are you sure you want to log out of your account?",
           style: TextStyle(color: AppColors.resolveInkMuted(isDark), fontSize: 13),
         ),
         actions: [
@@ -224,11 +267,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
             ),
-            child: const Text("Sign Out", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text("Log Out", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _openATSAnalysis(String resumeId, String resumeTitle, {int initialTabIndex = 0}) async {
+    final targetIndex = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ATSAnalysisScreen(
+          resumeId: resumeId,
+          resumeTitle: resumeTitle,
+          initialTabIndex: initialTabIndex,
+        ),
+      ),
+    );
+    if (targetIndex is int && mounted) {
+      setState(() => _selectedIndex = targetIndex);
+    }
   }
 
   Widget _buildDashboardMainContent(bool isDark) {
@@ -252,7 +311,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Casefile Dossier',
+                    'Resume Dashboard',
                     style: AppTypography.displayHero(
                       color: ink,
                       fontSize: 26,
@@ -261,7 +320,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Working File: ${_getFirstName()} • Active Review',
+                    'Welcome back, ${_getFirstName()}',
                     style: AppTypography.monoLabel(
                       color: inkSoft,
                       fontSize: 12,
@@ -270,7 +329,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               const Spacer(),
-              // Light / Dark Theme Toggle per mockup spec
+              // Light / Dark Theme Toggle
               ValueListenableBuilder<ThemeMode>(
                 valueListenable: ThemeController.themeModeNotifier,
                 builder: (context, currentMode, _) {
@@ -283,7 +342,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       color: cobalt,
                     ),
                     label: Text(
-                      isNight ? "Day desk" : "Night desk",
+                      isNight ? "Light Mode" : "Dark Mode",
                       style: AppTypography.buttonText(color: cobalt, fontSize: 12),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -300,7 +359,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 onPressed: _uploadResume,
                 icon: const Icon(Icons.upload_file_rounded, size: 16),
                 label: Text(
-                  'Add Document',
+                  'Upload Resume',
                   style: AppTypography.buttonText(color: Colors.white, fontSize: 12.5),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -315,7 +374,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(width: 10),
               IconButton(
-                tooltip: "Close Dossier",
+                tooltip: "Log Out",
                 onPressed: () => _confirmLogout(context),
                 icon: Icon(Icons.logout_rounded, color: brick, size: 18),
                 style: IconButton.styleFrom(
@@ -329,7 +388,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+
+          // FREEMIUM USAGE QUOTA ROW
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: UsageQuotaBadge(),
+          ),
+          const SizedBox(height: 20),
 
           // Hero Score Cards with ScoreStamp
           LayoutBuilder(
@@ -442,7 +508,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 12.0),
                             child: Text(
-                              'No dossier loaded yet. Upload a resume file to automatically extract audit credentials and verified skills.',
+                              'No resume uploaded yet. Upload your resume to get instant ATS scores, bullet rewrites, and skill gap analysis.',
                               style: AppTypography.bodyRegular(
                                 color: inkSoft,
                                 fontSize: 12,
@@ -499,7 +565,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 8),
                             ),
                             child: Text(
-                              _resumes.isNotEmpty ? 'Inspect Full Dossier' : 'Upload File',
+                              _resumes.isNotEmpty ? 'View Full Analysis' : 'Upload Resume',
                               style: AppTypography.buttonText(color: cobalt, fontSize: 11.5),
                             ),
                           ),
@@ -678,7 +744,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'ACTIVE DOSSIERS',
+                'UPLOADED RESUMES',
                 style: AppTypography.monoLabel(
                   color: inkSoft,
                   fontSize: 11,
@@ -686,7 +752,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               TextButton(
                 onPressed: () => setState(() => _selectedIndex = 1),
-                child: Text('View Archive', style: AppTypography.buttonText(color: cobalt, fontSize: 11.5)),
+                child: Text('View All Resumes', style: AppTypography.buttonText(color: cobalt, fontSize: 11.5)),
               ),
             ],
           ),
@@ -697,7 +763,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               width: double.infinity,
               child: Center(
                 child: Text(
-                  'No resume documents uploaded yet. Upload a file to generate dossier metrics.',
+                  'No resumes uploaded yet. Upload a file to see your ATS score and improvements.',
                   style: AppTypography.bodyRegular(color: inkSoft, fontSize: 12),
                   textAlign: TextAlign.center,
                 ),
@@ -711,17 +777,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final scoreColor = score >= 70 ? forest : (score >= 50 ? ochre : AppColors.resolveBrick(isDark));
 
               return InkWell(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ATSAnalysisScreen(
-                        resumeId: idStr,
-                        resumeTitle: title,
-                      ),
-                    ),
-                  );
-                },
+                onTap: () => _openATSAnalysis(idStr, title),
                 borderRadius: BorderRadius.circular(4),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -962,7 +1018,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'desc': 'Paste a job description to calculate semantic fit, missing skills, and keywords.',
         'icon': Icons.document_scanner_rounded,
         'color': forest,
-        'btn': 'Match JD Dossier',
+        'btn': 'Match Job Description',
         'action': () {
           if (_resumes.isNotEmpty) {
             Navigator.push(
@@ -1012,12 +1068,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Casefile Intelligence Hub',
+            'AI Career Tools',
             style: AppTypography.displayHero(color: ink, fontSize: 24),
           ),
           const SizedBox(height: 4),
           Text(
-            'Select an operational module to audit, rewrite, or accelerate your career dossier.',
+            'Select a tool to analyze your resume, match job requirements, or prepare for interviews.',
             style: AppTypography.bodyRegular(color: inkSoft, fontSize: 13),
           ),
           const SizedBox(height: 24),
@@ -1181,8 +1237,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               unselectedItemColor: inkSoft,
               items: const [
                 BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-                BottomNavigationBarItem(icon: Icon(Icons.folder_open_rounded), label: 'Dossiers'),
-                BottomNavigationBarItem(icon: Icon(Icons.document_scanner_rounded), label: 'Audit'),
+                BottomNavigationBarItem(icon: Icon(Icons.folder_open_rounded), label: 'Resumes'),
+                BottomNavigationBarItem(icon: Icon(Icons.document_scanner_rounded), label: 'Analysis'),
                 BottomNavigationBarItem(icon: Icon(Icons.alt_route_rounded), label: 'Roadmap'),
                 BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Settings'),
               ],

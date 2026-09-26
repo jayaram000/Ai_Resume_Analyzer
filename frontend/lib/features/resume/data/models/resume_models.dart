@@ -10,6 +10,7 @@ class ResumeModel extends ResumeEntity {
     required super.createdAt,
     super.targetPosition,
     super.parsedContent,
+    super.analysisCount = 1,
   });
 
   factory ResumeModel.fromJson(Map<String, dynamic> json) {
@@ -24,6 +25,7 @@ class ResumeModel extends ResumeEntity {
           : DateTime.now(),
       targetPosition: json['target_position'],
       parsedContent: json['parsed_content'] is Map<String, dynamic> ? json['parsed_content'] : null,
+      analysisCount: (json['analysis_count'] as num?)?.toInt() ?? 1,
     );
   }
 }
@@ -39,6 +41,7 @@ class ATSAnalysisModel extends ATSAnalysisEntity {
     required super.educationScore,
     required super.completenessScore,
     required super.suggestions,
+    super.analysisCount,
   });
 
   factory ATSAnalysisModel.fromJson(Map<String, dynamic> json) {
@@ -62,6 +65,7 @@ class ATSAnalysisModel extends ATSAnalysisEntity {
       educationScore: (json['education_score'] as num?)?.toInt() ?? 0,
       completenessScore: (json['completeness_score'] as num?)?.toInt() ?? 0,
       suggestions: suggestions,
+      analysisCount: (json['analysis_count'] as num?)?.toInt() ?? 1,
     );
   }
 }

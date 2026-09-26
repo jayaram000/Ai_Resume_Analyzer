@@ -50,7 +50,7 @@ def call_gemini_api(prompt: str, response_mime_type: str = "application/json", m
         attempt = 0
         while attempt < max_retries:
             try:
-                response = requests.post(url, headers=headers, json=payload, timeout=8)
+                response = requests.post(url, headers=headers, json=payload, timeout=30)
 
                 if response.status_code == 200:
                     data = response.json()

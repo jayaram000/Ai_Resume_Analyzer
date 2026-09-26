@@ -13,6 +13,7 @@ class ResumeDetailSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
     ats_score = serializers.SerializerMethodField()
     job_match_score = serializers.SerializerMethodField()
+    analysis_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Resume
@@ -27,9 +28,13 @@ class ResumeDetailSerializer(serializers.ModelSerializer):
             "sections",
             "ats_score",
             "job_match_score",
+            "analysis_count",
             "created_at",
             "updated_at",
         ]
+
+    def get_analysis_count(self, obj):
+        return obj.ats_analyses.count()
 
     def get_file_url(self, obj):
         request = self.context.get("request")

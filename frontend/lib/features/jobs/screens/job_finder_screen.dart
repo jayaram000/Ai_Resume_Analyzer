@@ -632,7 +632,7 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            "ACTIVE JOB MARKET DOSSIERS",
+                            "AVAILABLE JOB OPENINGS",
                             style: TextStyle(
                               color: ink,
                               fontSize: 13,

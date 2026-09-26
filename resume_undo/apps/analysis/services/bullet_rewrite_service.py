@@ -43,6 +43,12 @@ CRITICAL RULES:
 4. FOR `better_bullet_points`:
    - The JSON keys MUST BE an EXACT word-for-word copy of one of the candidate's existing bullets from the list below. DO NOT rephrase, summarize, or alter the key string in any way.
    - The JSON value MUST be the improved, high-impact STAR method rewrite of that exact bullet point.
+5. FOR `markdown_baseline`:
+   - Convert the ENTIRE `Resume text` below into a cleanly formatted Markdown resume.
+   - Preserve 100% of the original information, bullet points, skills, metrics, education, and dates exactly.
+   - DO NOT summarize, rewrite, or omit ANY original data from the baseline.
+   - Use strict markdown headers (# Name, ## PROFESSIONAL SUMMARY, ## EXPERIENCE, ## SKILLS, etc.).
+   - Use `### Job Title | Company` and `*Date*` for job meta headers.
 
 Candidate's EXACT existing bullet points to optimize:
 {bullets_formatted if bullets_formatted else text[:3000]}
@@ -55,7 +61,8 @@ Your response MUST be a JSON object matching this schema exactly:
      "Exact existing bullet point copied word-for-word from above": "Improved bullet point using strong action verbs and metrics"
   }},
   "summary_suggestions": "A compelling, keyword-rich professional summary",
-  "missing_sections": []
+  "missing_sections": [],
+  "markdown_baseline": "# John Doe\\n## PROFESSIONAL SUMMARY\\n..."
 }}
 
 {parsed_ctx}
@@ -72,7 +79,8 @@ Resume text:
             "weaknesses": ["Lack of quantifiable metrics and KPIs", "Generic verb phrasing across experience section"],
             "better_bullet_points": {},
             "summary_suggestions": "Tailor your professional summary to highlight measurable achievements and leadership roles.",
-            "missing_sections": []
+            "missing_sections": [],
+            "markdown_baseline": ""
         }
     
     weaknesses_list = result.get("weaknesses", [])
@@ -90,7 +98,8 @@ Resume text:
         weaknesses=cleaned_weaknesses,
         better_bullet_points=result.get("better_bullet_points", {}),
         summary_suggestions=result.get("summary_suggestions", ""),
-        missing_sections=result.get("missing_sections", [])
+        missing_sections=result.get("missing_sections", []),
+        markdown_baseline=result.get("markdown_baseline", "")
     )
     return improvement
 
@@ -98,13 +107,49 @@ Resume text:
 
 def build_resume_markdown(resume: Resume) -> str:
     """
-    Builds a clean Markdown representation of the resume from parsed structured data.
-    NO AI is used — this preserves the exact original content without hallucination.
+    Returns the perfect Markdown representation of the resume.
+    Prioritizes the LLM-generated lossless `markdown_baseline` if available,
+    otherwise falls back to building it from the parsed structured data.
+    If structured data is sparse (e.g. Gemini failed), uses a heuristic to convert raw text.
     """
+    from analysis.models import ResumeImprovement
+    import re
+    
+    # Use perfectly formatted baseline if available
+    improvement = ResumeImprovement.objects.filter(resume=resume).order_by("-created_at").first()
+    if improvement and improvement.markdown_baseline and len(improvement.markdown_baseline.strip()) > 100:
+        return improvement.markdown_baseline
+
     parsed = getattr(resume, "parsed_content", None)
-    if not parsed:
-        # Fallback to raw text if no parsed content
-        return _get_resume_text(resume)
+    raw_text = getattr(resume, "raw_text", "")
+    if parsed:
+        raw_text = parsed.extracted_text or raw_text
+
+    # If parsing completely failed or missed experience, use heuristic parsing to PRESERVE ALL DATA
+    if not parsed or not parsed.extracted_experience or len(parsed.extracted_experience) == 0:
+        if not raw_text:
+            return ""
+            
+        md_lines = []
+        for idx, line in enumerate(raw_text.split('\n')):
+            s = line.strip()
+            if not s:
+                md_lines.append('')
+                continue
+            if idx == 0:
+                md_lines.append(f'# {s}')
+            elif s.isupper() and len(s) < 50 and not any(c in s for c in '.,;:|/'):
+                md_lines.append(f'## {s}')
+            elif (s.startswith('•') or s.startswith('-') or s.startswith('*')):
+                # Replace unsupported unicode bullets with standard markdown bullet
+                md_lines.append(f'- {re.sub(r"^[•\-*]+\s*", "", s)}')
+            else:
+                # Check if it looks like a job meta line (contains dates like 2021, Present, etc.)
+                if re.search(r'\b(20\d{2}|19\d{2}|Present)\b', s, re.IGNORECASE) and len(s) < 80:
+                    md_lines.append(f'### {s}')
+                else:
+                    md_lines.append(s)
+        return '\n'.join(md_lines).strip()
 
     lines = []
 
@@ -124,7 +169,6 @@ def build_resume_markdown(resume: Resume) -> str:
     lines.append("")
 
     # --- Professional Summary: extract from raw text ---
-    raw_text = parsed.extracted_text or _get_resume_text(resume)
     summary = _extract_section_text(raw_text, ["PROFESSIONAL SUMMARY", "SUMMARY", "PROFILE", "OBJECTIVE", "CAREER SUMMARY"])
     if summary:
         lines.append("## PROFESSIONAL SUMMARY")
@@ -133,11 +177,9 @@ def build_resume_markdown(resume: Resume) -> str:
 
     # --- Skills ---
     if parsed.extracted_skills and len(parsed.extracted_skills) > 0:
-        # Try to extract structured skills sections from raw text first
         skills_section = _extract_section_text(raw_text, ["SKILLS", "TECHNICAL SKILLS", "CORE COMPETENCIES"])
         if skills_section and len(skills_section.strip()) > 30:
             lines.append("## SKILLS")
-            # Preserve the original formatting from the raw text
             for skill_line in skills_section.strip().split("\n"):
                 sl = skill_line.strip()
                 if sl:
@@ -236,7 +278,7 @@ def build_resume_markdown(resume: Resume) -> str:
             lines.append(f"* {cert}")
         lines.append("")
 
-    # --- Languages: try to extract from raw text ---
+    # --- Languages ---
     languages_section = _extract_section_text(raw_text, ["LANGUAGES", "LANGUAGES & ADDITIONAL"])
     if languages_section and len(languages_section.strip()) > 3:
         lines.append("## LANGUAGES")
@@ -244,9 +286,6 @@ def build_resume_markdown(resume: Resume) -> str:
         lines.append("")
 
     result = "\n".join(lines)
-    # If parsed data was too sparse, fall back to raw extracted text
-    if len(result.strip()) < 100:
-        return raw_text
     return result
 
 

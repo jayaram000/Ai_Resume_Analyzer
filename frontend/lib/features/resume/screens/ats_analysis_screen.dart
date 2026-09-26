@@ -6,10 +6,18 @@ import 'package:frontend/core/di/injection.dart';
 import 'package:frontend/core/storage/secure_storage.dart';
 import 'package:frontend/core/widgets/score_stamp.dart';
 import 'package:frontend/core/widgets/progress_bar_row.dart';
+import 'package:frontend/core/widgets/usage_quota_badge.dart';
 import 'package:frontend/features/resume/domain/repositories/resume_repository.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:frontend/features/dashboard/widgets/web_sidebar.dart';
+import 'package:frontend/features/dashboard/cubit/usage_cubit.dart';
+import 'package:frontend/core/widgets/premium_plan_paywall.dart';
+import 'package:frontend/features/auth/bloc/auth_bloc.dart';
+import 'package:frontend/features/auth/bloc/auth_event.dart';
 
 class ATSAnalysisScreen extends StatefulWidget {
   final String resumeId;
@@ -196,6 +204,63 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     return AppColors.resolveBrick(dark);
   }
 
+  void _confirmLogout(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppColors.resolvePaperAlt(isDark),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: AppColors.resolveRule(isDark)),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.logout_rounded, color: AppColors.resolveBrick(isDark), size: 20),
+            const SizedBox(width: 8),
+            Text(
+              "Log Out",
+              style: TextStyle(
+                color: AppColors.resolveInk(isDark),
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          "Are you sure you want to log out of your account?",
+          style: AppTypography.bodyRegular(color: AppColors.resolveInk(isDark), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.resolveInkMuted(isDark),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              context.read<AuthBloc>().add(LogoutRequested());
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.resolveBrick(isDark),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: const Text("Log Out", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -256,42 +321,63 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     try {
       final resumeRepo = sl<ResumeRepository>();
 
-      // 1. ATS Analysis
+      // 1. ATS Analysis - Load and display previous analysis instantly!
       final atsRes = await resumeRepo.getATSAnalysis(widget.resumeId);
       if (atsRes.isSuccess && atsRes.data != null) {
         final a = atsRes.data!;
-        _atsData = {
-          'ats_score': a.atsScore,
-          'keyword_score': a.keywordScore,
-          'formatting_score': a.formattingScore,
-          'skills_score': a.skillsScore,
-          'experience_score': a.experienceScore,
-          'education_score': a.educationScore,
-          'completeness_score': a.completenessScore,
-          'suggestions': a.suggestions,
-        };
+        if (mounted) {
+          setState(() {
+            _atsData = {
+              'ats_score': a.atsScore,
+              'keyword_score': a.keywordScore,
+              'formatting_score': a.formattingScore,
+              'skills_score': a.skillsScore,
+              'experience_score': a.experienceScore,
+              'education_score': a.educationScore,
+              'completeness_score': a.completenessScore,
+              'suggestions': a.suggestions,
+              'analysis_count': a.analysisCount,
+            };
+            // Instantly show the previously analyzed dossier scores!
+            _isLoading = false;
+          });
+        }
       }
 
-      // 2. Resume Improvement (Loads cached data instantly from database)
+      // Parallelize background sections without blocking the overview
+      await Future.wait([
+        _loadImprovementsAndDiffs(resumeRepo),
+        _loadCachedMarkdown(resumeRepo),
+        _fetchJobsForLocation(),
+      ]);
+    } catch (e) {
+      debugPrint("General ATS loading error: $e");
+    } finally {
+      if (mounted && _isLoading) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadImprovementsAndDiffs(ResumeRepository resumeRepo) async {
+    try {
       final impRes = await resumeRepo.getResumeImprovement(widget.resumeId, refresh: false);
       if (impRes.isSuccess && impRes.data != null) {
         final imp = impRes.data!;
-        _improvementData = {
+        final improvementData = {
           'strengths': imp.strengths,
           'weaknesses': imp.weaknesses,
           'better_bullet_points': imp.betterBulletPoints,
           'summary_suggestions': imp.summarySuggestions,
           'missing_sections': imp.missingSections,
         };
-      }
 
-      // Build diff suggestions from real backend better_bullet_points
-      if (_improvementData != null && _improvementData!['better_bullet_points'] != null) {
-        final bulletPoints = _improvementData!['better_bullet_points'];
-        if (bulletPoints is Map) {
+        final List<Map<String, dynamic>> realSuggestions = [];
+        if (improvementData['better_bullet_points'] is Map) {
           int idx = 0;
-          final List<Map<String, dynamic>> realSuggestions = [];
-          bulletPoints.forEach((oldText, newText) {
+          (improvementData['better_bullet_points'] as Map).forEach((oldText, newText) {
             idx++;
             realSuggestions.add({
               "id": idx.toString(),
@@ -301,46 +387,45 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
               "status": "pending",
             });
           });
-          _diffSuggestions = realSuggestions;
         }
-      }
 
-      // Also add summary suggestion if available
-      if (_improvementData != null && _improvementData!['summary_suggestions'] != null) {
-        final summaryText = _improvementData!['summary_suggestions'].toString().trim();
-        if (summaryText.isNotEmpty && summaryText.length > 20) {
-          _diffSuggestions.add({
-            "id": "${_diffSuggestions.length + 1}",
-            "section": "Professional Summary",
-            "oldText": "(Current professional summary)",
-            "newText": summaryText,
-            "status": "pending",
+        if (improvementData['summary_suggestions'] != null) {
+          final summaryText = improvementData['summary_suggestions'].toString().trim();
+          if (summaryText.isNotEmpty && summaryText.length > 20) {
+            realSuggestions.add({
+              "id": "${realSuggestions.length + 1}",
+              "section": "Professional Summary",
+              "oldText": "(Current professional summary)",
+              "newText": summaryText,
+              "status": "pending",
+            });
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _improvementData = improvementData;
+            _diffSuggestions = realSuggestions;
           });
         }
       }
+    } catch (e) {
+      debugPrint("Improvements loading error: $e");
+    }
+  }
 
-      // 3. Auto-load the original/improved resume content for Tab 3 (cached)
+  Future<void> _loadCachedMarkdown(ResumeRepository resumeRepo) async {
+    try {
       final contentRes = await resumeRepo.getResumeContent(widget.resumeId, type: 'diff_improved', refresh: false);
       if (contentRes.isSuccess && contentRes.data != null && contentRes.data!.trim().length > 50) {
-        _improvedOriginalMarkdown = contentRes.data!;
+        if (mounted) setState(() => _improvedOriginalMarkdown = contentRes.data!);
       }
-
-      // 4. Also load existing JD tailored content if any
       final jdContentRes = await resumeRepo.getResumeContent(widget.resumeId, type: 'jd_tailored');
       if (jdContentRes.isSuccess && jdContentRes.data != null && jdContentRes.data!.trim().length > 50) {
-        _jdTailoredMarkdown = jdContentRes.data!;
+        if (mounted) setState(() => _jdTailoredMarkdown = jdContentRes.data!);
       }
-
-      // 5. Matching jobs for resume's detected location
-      await _fetchJobsForLocation();
     } catch (e) {
-      debugPrint("General ATS loading error: $e");
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      debugPrint("Cached markdown error: $e");
     }
   }
 
@@ -466,8 +551,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(downloadType == 'jd_tailored'
-              ? "✔ Downloading JD-Tailored Resume PDF (${templateKey.toUpperCase()} Template)!"
-              : "✔ Downloading Improved Resume PDF (${templateKey.toUpperCase()} Template)!"),
+              ? "✔ Downloading your JD-Tailored Resume (${templateKey[0].toUpperCase()}${templateKey.substring(1)} template)!"
+              : "✔ Downloading your Improved Resume (${templateKey[0].toUpperCase()}${templateKey.substring(1)} template)!"),
           backgroundColor: const Color(0xFF22C55E),
         ),
       );
@@ -504,21 +589,21 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             {
               "key": "classic",
               "name": "Classic Executive",
-              "desc": "Traditional navy & slate layout with centered header. Ideal for traditional corporate & enterprise ATS.",
+              "desc": "Traditional navy layout, centred name & contact header, bold section rules. Best for corporate & enterprise roles.",
               "icon": Icons.article_outlined,
               "color": const Color(0xFF1E3A8A),
             },
             {
               "key": "modern",
-              "name": "Modern Technical",
-              "desc": "Clean left-accent bar with prominent skills grid and metrics. Optimized for engineering & tech roles.",
+              "name": "Modern Professional",
+              "desc": "Left-aligned name, cobalt accent dividers, clean spacing. Ideal for tech, product, and startup roles.",
               "icon": Icons.dashboard_outlined,
               "color": cobalt,
             },
             {
-              "key": "minimal",
+              "key": "minimalist",
               "name": "Minimalist Clean",
-              "desc": "Distraction-free single-column design with elegant typography. Maximum readability for strict ATS scanners.",
+              "desc": "Ultra-clean charcoal typography with subtle grey rules. Maximum whitespace & readability for strict ATS scanners.",
               "icon": Icons.subject_outlined,
               "color": isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
             },
@@ -866,10 +951,50 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
       "Format dates and section headers consistently throughout your document.",
     ];
 
-    return Scaffold(
+    final bool isDesktop = MediaQuery.of(context).size.width >= 900;
+    final int analysisCount = (_atsData['analysis_count'] as num?)?.toInt() ?? 1;
+
+    final analysisScaffold = Scaffold(
       appBar: AppBar(
-        title: Text(widget.resumeTitle),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                widget.resumeTitle,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: cobalt.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: cobalt.withValues(alpha: 0.35), width: 0.8),
+              ),
+              child: Text(
+                "AUDIT #$analysisCount",
+                style: GoogleFonts.jetBrainsMono(
+                  color: cobalt,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ),
+          ],
+        ),
         actions: [
+          if (!isDesktop) ...[
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.only(right: 4),
+                child: UsageQuotaBadge(compact: true),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
           PopupMenuButton<String>(
             icon: const Icon(Icons.download_rounded),
             tooltip: "Export Report",
@@ -1624,12 +1749,42 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                   ],
                 ),
     );
+
+    if (isDesktop) {
+      final isPremium = context.watch<UsageCubit>().state.isUnlimited;
+      return Scaffold(
+        body: Row(
+          children: [
+            WebSidebar(
+              selectedIndex: 3, // AI Analysis & Tools
+              isPremium: isPremium,
+              onItemSelected: (index) {
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop(index);
+                }
+              },
+              onUpgradePressed: () => PremiumPlanPaywall.showAsDialog(
+                context,
+                featureTitle: "Unlock Pro Features",
+                featureDescription: "Unlimited resume scans, deep skill gap analysis, and tailored career roadmaps.",
+              ),
+              onLogoutPressed: () => _confirmLogout(context),
+            ),
+            Expanded(child: analysisScaffold),
+          ],
+        ),
+      );
+    }
+
+    return analysisScaffold;
   }
 
   Widget _buildAtsGaugeCard(int atsScore, Color cardBg, Color borderColor, Color textPrimary, bool isDark) {
     final inkSoft = AppColors.resolveInkSoft(isDark);
     final paperAlt = AppColors.resolvePaperAlt(isDark);
     final rule = AppColors.resolveRule(isDark);
+    final cobalt = AppColors.resolveCobalt(isDark);
+    final int analysisCount = (_atsData['analysis_count'] as num?)?.toInt() ?? 1;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -1640,9 +1795,30 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
       ),
       child: Column(
         children: [
-          Text(
-            "ATS DOSSIER AUDIT",
-            style: AppTypography.monoLabel(color: inkSoft, fontSize: 11).copyWith(letterSpacing: 0.6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "ATS RESUME SCORE",
+                style: AppTypography.monoLabel(color: inkSoft, fontSize: 11).copyWith(letterSpacing: 0.6),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: cobalt.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: cobalt.withValues(alpha: 0.35), width: 0.8),
+                ),
+                child: Text(
+                  "SCAN #$analysisCount",
+                  style: GoogleFonts.jetBrainsMono(
+                    color: cobalt,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           ScoreStamp(
@@ -1653,10 +1829,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
           const SizedBox(height: 18),
           Text(
             atsScore >= 70
-                ? "Dossier matches top 20% candidate criteria."
+                ? "Resume matches top 20% candidate criteria (Scan #$analysisCount)."
                 : (atsScore >= 50
-                    ? "Moderate alignment. Address keyword omissions below."
-                    : "Significant formatting & keyword revisions recommended."),
+                    ? "Moderate alignment (Scan #$analysisCount). Address keyword suggestions below."
+                    : "Significant formatting & keyword revisions recommended (Scan #$analysisCount)."),
             textAlign: TextAlign.center,
             style: AppTypography.bodyRegular(
               color: inkSoft,

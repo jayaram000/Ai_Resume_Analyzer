@@ -11,6 +11,7 @@ class SkillGapEntity {
   final List<Map<String, dynamic>> recommendedProjects;
   final List<String> recommendedCertifications;
   final List<String> resumeTransitionTips;
+  final List<Map<String, dynamic>> learningResources;
   final bool isGuidingMode;
 
   const SkillGapEntity({
@@ -26,6 +27,7 @@ class SkillGapEntity {
     this.recommendedProjects = const [],
     this.recommendedCertifications = const [],
     this.resumeTransitionTips = const [],
+    this.learningResources = const [],
     this.isGuidingMode = false,
   });
 }

@@ -102,7 +102,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           Icon(Icons.lock_reset_outlined, size: 14, color: cobalt),
                           const SizedBox(width: 6),
                           Text(
-                            "DOSSIER ACCESS // RECOVERY",
+                            "PASSWORD RECOVERY",
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,

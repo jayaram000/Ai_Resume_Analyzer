@@ -20,6 +20,7 @@ class SkillGapModel extends SkillGapEntity {
     super.recommendedProjects = const [],
     super.recommendedCertifications = const [],
     super.resumeTransitionTips = const [],
+    super.learningResources = const [],
     super.isGuidingMode = false,
   });
 
@@ -62,6 +63,16 @@ class SkillGapModel extends SkillGapEntity {
       }
     }
 
+    // Parse learning resources
+    final List<Map<String, dynamic>> parsedResources = [];
+    if (json['learning_resources'] is List) {
+      for (final r in json['learning_resources']) {
+        if (r is Map) {
+          parsedResources.add(Map<String, dynamic>.from(r));
+        }
+      }
+    }
+
     final target = json['target_role']?.toString() ?? role;
 
     return SkillGapModel(
@@ -77,6 +88,7 @@ class SkillGapModel extends SkillGapEntity {
       recommendedProjects: parsedProjects,
       recommendedCertifications: parseStringList(json['recommended_certifications']),
       resumeTransitionTips: parseStringList(json['resume_transition_tips']),
+      learningResources: parsedResources,
       isGuidingMode: json['is_guiding_mode'] == true,
     );
   }

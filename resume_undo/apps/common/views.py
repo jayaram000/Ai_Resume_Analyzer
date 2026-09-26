@@ -153,3 +153,23 @@ class ExportReportView(APIView):
             return response
         except Exception as e:
             return Response({"success": False, "message": f"Failed to generate document: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UsageStatusView(APIView):
+    """
+    Returns the current user's 5-hour rolling freemium quota status.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from common.usage_limiter import get_usage_status, is_quota_exempt
+        allowed, remaining, reset_at = get_usage_status(request.user)
+        return Response({
+            "success": True,
+            "data": {
+                "usage_remaining": remaining,
+                "reset_at": reset_at,
+                "is_unlimited": is_quota_exempt(request.user),
+            }
+        })
+

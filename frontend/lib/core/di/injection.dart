@@ -26,6 +26,7 @@ import 'package:frontend/features/jobs/domain/usecases/job_usecases.dart';
 import 'package:frontend/features/skill_gap/data/skill_gap_data.dart';
 import 'package:frontend/features/skill_gap/domain/repositories/skill_gap_repository.dart';
 import 'package:frontend/features/roadmap/data/roadmap_clean.dart';
+import 'package:frontend/features/dashboard/cubit/usage_cubit.dart';
 
 final GetIt sl = GetIt.instance;
 
@@ -89,4 +90,10 @@ Future<void> initDependencyInjection() async {
     () => RoadmapRepositoryImpl(remoteDataSource: sl<RoadmapRemoteDataSource>()),
   );
   sl.registerLazySingleton<GenerateRoadmapUseCase>(() => GenerateRoadmapUseCase(sl<RoadmapRepository>()));
+
+  // --- Freemium Usage Feature ---
+  if (!sl.isRegistered<UsageCubit>()) {
+    sl.registerLazySingleton<UsageCubit>(() => UsageCubit());
+  }
 }
+

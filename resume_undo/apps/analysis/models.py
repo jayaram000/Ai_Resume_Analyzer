@@ -27,6 +27,7 @@ class ResumeImprovement(models.Model):
     better_bullet_points = models.JSONField(default=dict)
     summary_suggestions = models.TextField(blank=True)
     missing_sections = models.JSONField(default=list)
+    markdown_baseline = models.TextField(blank=True) # Holds perfect Markdown rendering of the original raw text
     tailored_content = models.TextField(blank=True) # Holds Original + Accepted Diff Suggestions
     jd_tailored_content = models.TextField(blank=True) # Holds JD-specific tailored resume
     created_at = models.DateTimeField(auto_now_add=True)

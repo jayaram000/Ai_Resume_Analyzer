@@ -1,4 +1,4 @@
-import html
+﻿import html
 import io
 import urllib.parse
 from reportlab.lib.pagesizes import letter
@@ -758,156 +758,399 @@ def generate_career_roadmap_pdf(roadmap) -> io.BytesIO:
 
 def generate_resume_pdf(markdown_content: str, template_style: str = "classic") -> io.BytesIO:
     """
-    Generates a professional ATS-friendly PDF document from Markdown content.
-    Supports 3 distinct layout themes:
-    1. 'classic'   - Classic ATS Standard (Navy Blue, Traditional 1-column layout)
-    2. 'modern'    - Modern Executive (Emerald & Slate, Left Badges, Sleek padding)
-    3. 'minimalist'- Clean Minimalist (Dark Charcoal & Teal, Compact single column)
+    Generates a premium, ATS-optimised, publication-quality resume PDF.
+
+    Templates:
+      'classic'    – Full-width deep-navy name/header band with white text.
+                     ALL-CAPS navy section labels + full-width navy underline.
+                     Centred header. Traditional single-column body.
+      'modern'     – Left-aligned cobalt name. Bold cobalt section labels with
+                     a cobalt rule. Compact professional spacing.
+      'minimalist' – Charcoal name, thin grey underline after name.
+                     Charcoal ALL-CAPS section labels with a hairline rule.
+                     Ultra-clean whitespace.
+    All three are fully ATS-parsable (single-column, no text in images/tables).
     """
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=letter,
-        rightMargin=45 if template_style == "minimalist" else 54,
-        leftMargin=45 if template_style == "minimalist" else 54,
-        topMargin=45 if template_style == "minimalist" else 54,
-        bottomMargin=45 if template_style == "minimalist" else 54,
+    import re
+    from reportlab.platypus import BaseDocTemplate, Frame, PageTemplate
+    from reportlab.lib.units import inch
+
+    # ── Page geometry ──────────────────────────────────────────────────────────
+    PAGE_W, PAGE_H = letter
+    L_MARGIN = R_MARGIN = 54          # left / right
+    T_MARGIN = 48                     # top (body starts here; header drawn by canvas)
+    B_MARGIN = 48
+
+    # For Classic, we draw a coloured header band via canvas, so the top frame
+    # starts below it. We reserve HEADER_H points at the top for that band.
+    HEADER_H = 72 if template_style == "classic" else 0
+
+    frame = Frame(
+        L_MARGIN, B_MARGIN,
+        PAGE_W - L_MARGIN - R_MARGIN,
+        PAGE_H - T_MARGIN - B_MARGIN - HEADER_H,
+        leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0,
+        id="body"
     )
+
+    buffer = io.BytesIO()
+
+    # ── Theme colours ──────────────────────────────────────────────────────────
+    if template_style == "modern":
+        C_NAME    = colors.HexColor("#0F172A")
+        C_HEAD    = colors.HexColor("#1D4ED8")   # cobalt
+        C_BODY    = colors.HexColor("#1E293B")
+        C_MUTED   = colors.HexColor("#64748B")
+        C_RULE    = colors.HexColor("#1D4ED8")
+        C_RULE2   = colors.HexColor("#BFDBFE")   # light rule
+        C_BULLET  = colors.HexColor("#1D4ED8")
+    elif template_style == "minimalist":
+        C_NAME    = colors.HexColor("#111827")
+        C_HEAD    = colors.HexColor("#111827")
+        C_BODY    = colors.HexColor("#1F2937")
+        C_MUTED   = colors.HexColor("#6B7280")
+        C_RULE    = colors.HexColor("#6B7280")
+        C_RULE2   = colors.HexColor("#D1D5DB")
+        C_BULLET  = colors.HexColor("#374151")
+    else:  # classic
+        C_NAME    = colors.white
+        C_HEAD    = colors.HexColor("#1E3A8A")
+        C_BODY    = colors.HexColor("#0F172A")
+        C_MUTED   = colors.HexColor("#475569")
+        C_RULE    = colors.HexColor("#1E3A8A")
+        C_RULE2   = colors.HexColor("#CBD5E1")
+        C_BULLET  = colors.HexColor("#1E3A8A")
 
     styles = getSampleStyleSheet()
 
-    # Determine theme color palette
-    if template_style == "modern":
-        primary_color = ReportLabTokens.get("secondary")
-        secondary_color = ReportLabTokens.get("primary")
-        divider_color = ReportLabTokens.get("border")
-    elif template_style == "minimalist":
-        primary_color = ReportLabTokens.get("primary")
-        secondary_color = ReportLabTokens.get("text_secondary")
-        divider_color = ReportLabTokens.get("border")
-    else:
-        # Default "classic"
-        primary_color = colors.HexColor("#1E3A8A")   # Deep Navy
-        secondary_color = colors.HexColor("#1E293B") # Dark Slate
-        divider_color = colors.HexColor("#94A3B8")
+    # ── Typography styles ──────────────────────────────────────────────────────
+    is_classic    = template_style == "classic"
+    is_minimalist = template_style == "minimalist"
 
-    title_style = ParagraphStyle(
-        'ResumeTitle',
-        parent=styles['Heading1'],
-        fontSize=22 if template_style != "minimalist" else 20,
-        leading=26,
-        fontName='Helvetica-Bold',
-        textColor=primary_color,
-        alignment=1 if template_style == "classic" else 0, # Center for Classic, Left for Modern/Minimalist
-        spaceAfter=4
+    # Name (classic: white on band so rendered via canvas; modern/minimalist: in body)
+    name_style = ParagraphStyle(
+        "RN_Name",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=24 if is_classic else (20 if is_minimalist else 22),
+        leading=28,
+        textColor=C_NAME,
+        alignment=1 if is_classic else 0,
+        spaceAfter=2,
     )
 
+    # Contact line
     contact_style = ParagraphStyle(
-        'ResumeContact',
-        parent=styles['Normal'],
-        fontSize=9.5,
+        "RN_Contact",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=9,
         leading=13,
-        textColor=colors.HexColor("#475569"),
-        alignment=1 if template_style == "classic" else 0,
-        spaceAfter=12
+        textColor=colors.HexColor("#94A3B8") if is_classic else C_MUTED,
+        alignment=1 if is_classic else 0,
+        spaceAfter=0,
     )
 
-    h2_style = ParagraphStyle(
-        'ResumeSectionHeader',
-        parent=styles['Heading2'],
-        fontSize=12.5,
-        leading=16,
-        fontName='Helvetica-Bold',
-        textColor=primary_color,
-        spaceBefore=10,
-        spaceAfter=4
+    # Section header label
+    section_style = ParagraphStyle(
+        "RN_Section",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=10,
+        leading=13,
+        letterSpacing=1.0,
+        textColor=C_HEAD,
+        spaceBefore=12,
+        spaceAfter=1,
     )
 
-    h3_style = ParagraphStyle(
-        'ResumeSubHeader',
-        parent=styles['Heading3'],
+    # Job title / degree title (bold)
+    job_title_style = ParagraphStyle(
+        "RN_JobTitle",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
         fontSize=10.5,
         leading=14,
-        fontName='Helvetica-Bold',
-        textColor=secondary_color,
+        textColor=C_BODY,
         spaceBefore=6,
-        spaceAfter=3
+        spaceAfter=0,
     )
 
+    # Company / date meta line (italic, muted)
+    job_meta_style = ParagraphStyle(
+        "RN_Meta",
+        parent=styles["Normal"],
+        fontName="Helvetica-Oblique",
+        fontSize=9,
+        leading=12,
+        textColor=C_MUTED,
+        spaceAfter=3,
+    )
+
+    # Body / summary paragraph
     body_style = ParagraphStyle(
-        'ResumeBody',
-        parent=styles['Normal'],
+        "RN_Body",
+        parent=styles["Normal"],
+        fontName="Helvetica",
         fontSize=9.5,
-        leading=13.5,
-        textColor=colors.HexColor("#1E293B")
+        leading=14,
+        textColor=C_BODY,
+        spaceAfter=2,
     )
 
-    story = []
-    lines = markdown_content.split('\n')
-    current_list_items = []
-    is_first_header = True
+    # Skill category label  e.g.  Languages:  Python, JS
+    skill_cat_style = ParagraphStyle(
+        "RN_SkillCat",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=9.5,
+        leading=14,
+        textColor=C_BODY,
+        spaceAfter=1,
+    )
 
-    def flush_list():
-        if current_list_items:
-            items = []
-            for item_text in current_list_items:
-                formatted_item = format_inline_markdown(item_text)
-                items.append(ListItem(Paragraph(formatted_item, body_style)))
-            story.append(ListFlowable(items, bulletType='bullet', leftIndent=12, bulletColor=primary_color))
-            story.append(Spacer(1, 4))
-            current_list_items.clear()
+    # Footer
+    footer_style = ParagraphStyle(
+        "RN_Footer",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=7.5,
+        leading=10,
+        textColor=C_MUTED,
+        alignment=1,
+    )
 
-    def format_inline_markdown(text: str) -> str:
-        # Convert **bold** to <b>bold</b> and *italic* to <i>italic</i>
-        parts = text.split('**')
-        result = []
-        for i, part in enumerate(parts):
-            if i % 2 == 1:
-                result.append(f"<b>{html.escape(part)}</b>")
-            else:
-                result.append(html.escape(part))
-        return "".join(result)
+    # ── Helpers ────────────────────────────────────────────────────────────────
+    def fmt(text: str) -> str:
+        """Markdown inline → ReportLab XML."""
+        text = html.escape(text)
+        text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
+        text = re.sub(r'\*([^*\n]+?)\*', r'<i>\1</i>', text)
+        text = re.sub(r'_([^_\n]+?)_',  r'<i>\1</i>', text)
+        return text
 
-    for line in lines:
-        stripped = line.strip()
+    def is_contact_line(s: str) -> bool:
+        triggers = ["@", "linkedin", "github", "http", "phone", "mobile",
+                    "+91", "+1", "(+", "|", "•", "·", "✉", "✆", "portfolio"]
+        lo = s.lower()
+        return any(t in lo for t in triggers) or bool(re.search(r'\+?\d[\d\s\-().]{6,}', s))
+
+    def section_divider():
+        if template_style == "classic":
+            return HRFlowable(width="100%", thickness=1.5, color=C_RULE,
+                              spaceBefore=2, spaceAfter=6)
+        elif template_style == "modern":
+            return HRFlowable(width="100%", thickness=1.0, color=C_RULE2,
+                              spaceBefore=1, spaceAfter=5)
+        else:  # minimalist
+            return HRFlowable(width="100%", thickness=0.5, color=C_RULE,
+                              spaceBefore=2, spaceAfter=6)
+
+    def make_bullet(text: str) -> ListItem:
+        return ListItem(
+            Paragraph(fmt(text), body_style),
+            bulletColor=C_BULLET,
+            leftIndent=14,
+            bulletIndent=2,
+            spaceAfter=1,
+        )
+
+    # ── Canvas callbacks for Classic header band ───────────────────────────────
+    # (For modern/minimalist the header is rendered as normal flowables)
+    _classic_name    = [""]
+    _classic_contact = [""]
+
+    def _draw_classic_header(canvas_obj, doc_obj):
+        """Paint the navy band and white text on every first-page."""
+        canvas_obj.saveState()
+        band_y = PAGE_H - T_MARGIN - HEADER_H
+        # Navy band
+        canvas_obj.setFillColor(C_HEAD)
+        canvas_obj.rect(0, band_y, PAGE_W, HEADER_H, fill=1, stroke=0)
+        # Thin gold/slate accent line at bottom of band
+        canvas_obj.setFillColor(colors.HexColor("#60A5FA"))
+        canvas_obj.rect(0, band_y, PAGE_W, 3, fill=1, stroke=0)
+
+        # Name text centred
+        canvas_obj.setFillColor(colors.white)
+        canvas_obj.setFont("Helvetica-Bold", 24)
+        canvas_obj.drawCentredString(PAGE_W / 2, band_y + HEADER_H - 30, _classic_name[0])
+
+        # Contact line centred below name
+        canvas_obj.setFillColor(colors.HexColor("#BAE6FD"))  # light blue
+        canvas_obj.setFont("Helvetica", 9)
+        canvas_obj.drawCentredString(PAGE_W / 2, band_y + HEADER_H - 47, _classic_contact[0])
+        canvas_obj.restoreState()
+
+    if template_style == "classic":
+        pt = PageTemplate(id="main", frames=[frame], onPage=_draw_classic_header)
+    else:
+        pt = PageTemplate(id="main", frames=[frame])
+
+    doc = BaseDocTemplate(
+        buffer,
+        pagesize=letter,
+        leftMargin=L_MARGIN,
+        rightMargin=R_MARGIN,
+        topMargin=T_MARGIN + HEADER_H,
+        bottomMargin=B_MARGIN,
+    )
+    doc.addPageTemplates([pt])
+
+    # ── Parse Markdown → flowables ─────────────────────────────────────────────
+    story    = []
+    lines    = [l.rstrip() for l in markdown_content.split('\n')]
+    pending  : list[str] = []   # buffered bullet texts
+    in_head  = True             # True until first ## section seen
+
+    def flush():
+        if not pending:
+            return
+        story.append(ListFlowable(
+            [make_bullet(b) for b in pending],
+            bulletType="bullet",
+            leftIndent=14,
+            bulletIndent=2,
+            spaceAfter=3,
+        ))
+        pending.clear()
+
+    i = 0
+    while i < len(lines):
+        raw     = lines[i]
+        stripped = raw.strip()
+
+        # blank
         if not stripped:
+            flush()
+            i += 1
             continue
 
-        if stripped.startswith('# '):
-            flush_list()
-            name_text = stripped[2:].strip()
-            story.append(Paragraph(html.escape(name_text), title_style))
-            is_first_header = True
+        # ── H1 → candidate name ──────────────────────────────────────────
+        if stripped.startswith("# "):
+            flush()
+            name = stripped[2:].strip()
+            _classic_name[0] = name   # store for canvas
+            if not is_classic:
+                # Render name as flowable for modern/minimalist
+                story.append(Paragraph(html.escape(name), name_style))
+                if is_minimalist:
+                    # Thin underline below name
+                    story.append(HRFlowable(width="100%", thickness=1,
+                                            color=C_RULE, spaceBefore=2, spaceAfter=4))
+            in_head = True
+            i += 1
+            continue
 
-        elif stripped.startswith('## '):
-            flush_list()
-            section_name = stripped[3:].strip()
-            story.append(Spacer(1, 6))
-            story.append(Paragraph(html.escape(section_name).upper(), h2_style))
-            story.append(HRFlowable(width="100%", thickness=1, color=divider_color, spaceBefore=2, spaceAfter=6))
+        # ── Contact line (under name, before first ## section) ───────────
+        if in_head and is_contact_line(stripped) and not stripped.startswith("##"):
+            flush()
+            # Collect multi-part contact lines
+            parts = [stripped]
+            while (i + 1 < len(lines)
+                   and lines[i + 1].strip()
+                   and is_contact_line(lines[i + 1].strip())
+                   and not lines[i + 1].strip().startswith("##")):
+                i += 1
+                parts.append(lines[i].strip())
+            contact_text = "  |  ".join(parts) if len(parts) > 1 else parts[0]
+            _classic_contact[0] = contact_text   # store for canvas
+            if not is_classic:
+                story.append(Paragraph(html.escape(contact_text), contact_style))
+                story.append(Spacer(1, 6))
+            i += 1
+            continue
 
-        elif stripped.startswith('### '):
-            flush_list()
-            sub_text = stripped[4:].strip()
-            story.append(Paragraph(format_inline_markdown(sub_text), h3_style))
-            story.append(Spacer(1, 2))
+        # ── H2 → section header ──────────────────────────────────────────
+        if stripped.startswith("## "):
+            flush()
+            in_head = False
+            section_name = stripped[3:].strip().upper()
+            story.append(Spacer(1, 4))
+            story.append(Paragraph(html.escape(section_name), section_style))
+            story.append(section_divider())
+            i += 1
+            continue
 
-        elif stripped.startswith('- ') or stripped.startswith('* '):
-            bullet_text = stripped[2:].strip()
-            current_list_items.append(bullet_text)
+        # ── H3 → job title / degree / project title ───────────────────────
+        if stripped.startswith("### "):
+            flush()
+            sub = stripped[4:].strip()
 
-        else:
-            flush_list()
-            if is_first_header and ("@" in stripped or "|" in stripped or "+" in stripped or "http" in stripped or "LinkedIn" in stripped):
-                # Contact info line under main name header
-                story.append(Paragraph(html.escape(stripped), contact_style))
-                is_first_header = False
+            # Peek: does it contain role | company split?
+            if "|" in sub and not sub.startswith("**"):
+                parts_h = [p.strip() for p in sub.split("|", 1)]
+                role_text    = parts_h[0]
+                company_text = parts_h[1] if len(parts_h) > 1 else ""
+                # Render role bold, company muted on same line via Table
+                role_para    = Paragraph(f"<b>{html.escape(role_text)}</b>", job_title_style)
+                company_para = Paragraph(html.escape(company_text), job_meta_style)
+                tbl = Table(
+                    [[role_para, company_para]],
+                    colWidths=[(PAGE_W - L_MARGIN - R_MARGIN) * 0.6,
+                               (PAGE_W - L_MARGIN - R_MARGIN) * 0.4],
+                )
+                tbl.setStyle(TableStyle([
+                    ('VALIGN',       (0,0), (-1,-1), 'BOTTOM'),
+                    ('LEFTPADDING',  (0,0), (-1,-1), 0),
+                    ('RIGHTPADDING', (0,0), (-1,-1), 0),
+                    ('TOPPADDING',   (0,0), (-1,-1), 0),
+                    ('BOTTOMPADDING',(0,0), (-1,-1), 0),
+                    ('ALIGN',        (1,0), (1,0), 'RIGHT'),
+                ]))
+                story.append(KeepTogether([tbl]))
             else:
-                formatted_line = format_inline_markdown(stripped)
-                story.append(Paragraph(formatted_line, body_style))
-                story.append(Spacer(1, 3))
+                story.append(Paragraph(fmt(sub), job_title_style))
 
-    flush_list()
+            # Peek: next line is italic meta (employer/date)?
+            if i + 1 < len(lines):
+                nxt = lines[i + 1].strip()
+                is_italic = (nxt.startswith("*") and nxt.endswith("*")
+                             and not nxt.startswith("**") and len(nxt) > 2)
+                is_meta   = (not nxt.startswith("- ") and not nxt.startswith("* ")
+                             and not nxt.startswith("#")
+                             and ("|" in nxt or "–" in nxt or re.search(r'\d{4}', nxt)))
+                if is_italic:
+                    i += 1
+                    story.append(Paragraph(html.escape(nxt.strip("*").strip()), job_meta_style))
+                elif is_meta:
+                    i += 1
+                    story.append(Paragraph(html.escape(nxt), job_meta_style))
+            i += 1
+            continue
+
+        # ── Bullet / list item ────────────────────────────────────────────
+        if stripped.startswith("- ") or stripped.startswith("* "):
+            pending.append(stripped[2:].strip())
+            i += 1
+            continue
+
+        # ── Bold category: **Key:** value  (skills, achievements, etc.) ──
+        if stripped.startswith("**") and ":" in stripped:
+            flush()
+            story.append(Paragraph(fmt(stripped), skill_cat_style))
+            story.append(Spacer(1, 2))
+            i += 1
+            continue
+
+        # ── Plain paragraph (summary text, descriptions, etc.) ────────────
+        flush()
+        story.append(Paragraph(fmt(stripped), body_style))
+        story.append(Spacer(1, 2))
+        i += 1
+
+    flush()
+
+    # ── Footer ─────────────────────────────────────────────────────────────────
+    story.append(Spacer(1, 16))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=C_RULE2,
+                             spaceBefore=4, spaceAfter=4))
+    story.append(Paragraph(
+        "Prepared by ResumeAI Career Copilot  ·  ATS-Optimised Format",
+        footer_style,
+    ))
+
     doc.build(story)
     buffer.seek(0)
     return buffer
+

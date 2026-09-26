@@ -7,6 +7,7 @@ class ResumeEntity {
   final DateTime createdAt;
   final String? targetPosition;
   final Map<String, dynamic>? parsedContent;
+  final int analysisCount;
 
   const ResumeEntity({
     required this.id,
@@ -17,6 +18,7 @@ class ResumeEntity {
     required this.createdAt,
     this.targetPosition,
     this.parsedContent,
+    this.analysisCount = 1,
   });
 }
 
@@ -30,6 +32,7 @@ class ATSAnalysisEntity {
   final int educationScore;
   final int completenessScore;
   final List<String> suggestions;
+  final int analysisCount;
 
   const ATSAnalysisEntity({
     required this.id,
@@ -41,6 +44,7 @@ class ATSAnalysisEntity {
     required this.educationScore,
     required this.completenessScore,
     required this.suggestions,
+    this.analysisCount = 1,
   });
 }
 

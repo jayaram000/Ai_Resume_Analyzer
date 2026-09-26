@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 from resumes.models import Resume
-from common.permissions import IsPremiumUser
+from common.permissions import IsPremiumUser, HasUsageQuota
+from common.usage_limiter import consume_usage
 from analysis.serializers import (
     ATSAnalysisSerializer,
     ResumeImprovementSerializer,
@@ -63,6 +64,11 @@ class BaseAnalysisView(APIView):
 # --- Normal User Features ---
 
 class ATSAnalysisView(BaseAnalysisView):
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated(), HasUsageQuota()]
+        return [permissions.IsAuthenticated()]
+
     @extend_schema(request=None, responses=ATSAnalysisSerializer)
     def get(self, request, resume_id):
         resume = self.get_resume(resume_id, request.user)
@@ -70,7 +76,7 @@ class ATSAnalysisView(BaseAnalysisView):
             return Response({"success": False, "message": "Resume not found."}, status=404)
         from analysis.models import ATSAnalysis
         analysis = ATSAnalysis.objects.filter(resume=resume).order_by("-created_at").first()
-        if not analysis or analysis.ats_score <= 15:
+        if not analysis:
             from resumes.services import parse_and_save_resume
             if not hasattr(resume, "parsed_content") or resume.parsed_content is None:
                 try:
@@ -87,9 +93,20 @@ class ATSAnalysisView(BaseAnalysisView):
         if not resume:
             return Response({"success": False, "message": "Resume not found."}, status=404)
         analysis = generate_ats_analysis(resume)
-        return Response({"success": True, "data": ATSAnalysisSerializer(analysis).data})
+        _, remaining, reset_at = consume_usage(request.user, "ats_scan")
+        return Response({
+            "success": True,
+            "data": ATSAnalysisSerializer(analysis).data,
+            "usage_remaining": remaining,
+            "reset_at": reset_at,
+        })
 
 class ResumeImprovementView(BaseAnalysisView):
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated(), HasUsageQuota()]
+        return [permissions.IsAuthenticated()]
+
     @extend_schema(request=None, responses=ResumeImprovementSerializer)
     def get(self, request, resume_id):
         resume = self.get_resume(resume_id, request.user)
@@ -99,7 +116,7 @@ class ResumeImprovementView(BaseAnalysisView):
         
         force_refresh = request.query_params.get('refresh', 'false').lower() == 'true'
         improvement = ResumeImprovement.objects.filter(resume=resume).order_by("-created_at").first()
-        if force_refresh or not improvement or not improvement.strengths or "fallback" in str(improvement.strengths).lower() or not improvement.better_bullet_points:
+        if force_refresh or not improvement:
             improvement = generate_resume_improvements(resume)
         return Response({"success": True, "data": ResumeImprovementSerializer(improvement).data})
 
@@ -109,7 +126,13 @@ class ResumeImprovementView(BaseAnalysisView):
         if not resume:
             return Response({"success": False, "message": "Resume not found."}, status=404)
         improvement = generate_resume_improvements(resume)
-        return Response({"success": True, "data": ResumeImprovementSerializer(improvement).data})
+        _, remaining, reset_at = consume_usage(request.user, "bullet_rewrite")
+        return Response({
+            "success": True,
+            "data": ResumeImprovementSerializer(improvement).data,
+            "usage_remaining": remaining,
+            "reset_at": reset_at,
+        })
 
 class DownloadImprovedResumeView(BaseAnalysisView):
     permission_classes = [permissions.AllowAny]
@@ -287,6 +310,8 @@ class PositionAnalysisView(BaseAnalysisView):
         return Response(serializer.errors, status=400)
 
 class JDMatchAnalysisView(BaseAnalysisView):
+    permission_classes = [permissions.IsAuthenticated, HasUsageQuota]
+
     @extend_schema(request=JDMatchInputSerializer, responses=JDMatchAnalysisSerializer)
     def post(self, request, resume_id):
         resume = self.get_resume(resume_id, request.user)
@@ -299,10 +324,18 @@ class JDMatchAnalysisView(BaseAnalysisView):
                 resume, 
                 serializer.validated_data["job_description"]
             )
-            return Response({"success": True, "data": JDMatchAnalysisSerializer(analysis).data})
+            _, remaining, reset_at = consume_usage(request.user, "jd_match")
+            return Response({
+                "success": True, 
+                "data": JDMatchAnalysisSerializer(analysis).data,
+                "usage_remaining": remaining,
+                "reset_at": reset_at,
+            })
         return Response(serializer.errors, status=400)
 
 class AutoTailorResumeView(BaseAnalysisView):
+    permission_classes = [permissions.IsAuthenticated, HasUsageQuota]
+
     def post(self, request, resume_id):
         resume = self.get_resume(resume_id, request.user)
         if not resume:
@@ -342,8 +375,14 @@ class AutoTailorResumeView(BaseAnalysisView):
                         improvement.save(update_fields=['jd_tailored_content'])
                 except Exception as e:
                     logger.error(f"Failed to auto-save jd tailored markdown: {e}")
-                    
-            return Response({"success": True, "data": result})
+
+            _, remaining, reset_at = consume_usage(request.user, "jd_match")
+            return Response({
+                "success": True, 
+                "data": result,
+                "usage_remaining": remaining,
+                "reset_at": reset_at,
+            })
         return Response(serializer.errors, status=400)
 
 # --- Premium Features (Gated) ---

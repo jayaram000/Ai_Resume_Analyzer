@@ -13,9 +13,20 @@ from analysis.models import (
 )
 
 class ATSAnalysisSerializer(serializers.ModelSerializer):
+    analysis_count = serializers.SerializerMethodField()
+    total_user_scans = serializers.SerializerMethodField()
+
     class Meta:
         model = ATSAnalysis
         fields = "__all__"
+
+    def get_analysis_count(self, obj):
+        from analysis.models import ATSAnalysis
+        return ATSAnalysis.objects.filter(resume=obj.resume).count()
+
+    def get_total_user_scans(self, obj):
+        from analysis.models import ATSAnalysis
+        return ATSAnalysis.objects.filter(resume__user=obj.resume.user).count()
 
 class ResumeImprovementSerializer(serializers.ModelSerializer):
     class Meta:
