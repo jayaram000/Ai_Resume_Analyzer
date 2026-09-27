@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:frontend/core/di/injection.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/utils/file_downloader.dart';
@@ -94,6 +95,7 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
       final apiClient = sl<ApiClient>();
       final response = await apiClient.get(
         'analysis/roadmap/$roadmapId/pdf/',
+        options: Options(responseType: ResponseType.bytes),
       );
 
       final bytes = (response.data is List<int>) ? (response.data as List<int>) : List<int>.from(response.data);

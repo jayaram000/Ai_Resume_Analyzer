@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart' as import_url_launcher;
 import 'package:frontend/core/di/injection.dart';
 import 'package:frontend/core/utils/file_downloader.dart';
@@ -215,6 +216,7 @@ class _SkillGapScreenState extends State<SkillGapScreen> {
       final apiClient = sl<ApiClient>();
       final response = await apiClient.get(
         'analysis/skill-gap/${_gapData!.id}/pdf/',
+        options: Options(responseType: ResponseType.bytes),
       );
 
       final bytes = (response.data is List<int>) ? (response.data as List<int>) : List<int>.from(response.data);

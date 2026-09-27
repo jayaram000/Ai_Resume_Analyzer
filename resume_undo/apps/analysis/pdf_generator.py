@@ -1,4 +1,4 @@
-﻿import html
+import html
 import io
 import urllib.parse
 from reportlab.lib.pagesizes import letter
@@ -141,6 +141,7 @@ def generate_skill_gap_pdf(analysis, is_guiding_mode=False) -> io.BytesIO:
     recommended_projects = lp_data.get("recommended_projects", [])
     recommended_certs = lp_data.get("recommended_certifications", [])
     resume_tips = lp_data.get("resume_transition_tips", [])
+    learning_resources = lp_data.get("learning_resources", [])
     gen_date = analysis.created_at.strftime("%B %d, %Y") if hasattr(analysis, "created_at") and analysis.created_at else datetime.now().strftime("%B %d, %Y")
 
     story = []
@@ -348,6 +349,42 @@ def generate_skill_gap_pdf(analysis, is_guiding_mode=False) -> io.BytesIO:
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
         story.append(KeepTogether([cert_tip_table, Spacer(1, 14)]))
+
+    # 8. RECOMMENDED LEARNING RESOURCES
+    if learning_resources:
+        story.append(Spacer(1, 6))
+        story.append(Paragraph("Recommended Learning Resources & Courses", section_h1_style))
+        story.append(Spacer(1, 4))
+
+        lr_cards = []
+        for r in learning_resources:
+            title = r.get("title", "Resource")
+            platform = r.get("platform", "Platform")
+            r_type = r.get("type", "Course")
+            url = r.get("url", "")
+            
+            lr_cell = [
+                Paragraph(f"<b>{html.escape(title)}</b>", body_bold_style),
+                Spacer(1, 2),
+                Paragraph(f"Type: {html.escape(r_type)} &nbsp;|&nbsp; Platform: {html.escape(platform)}", body_style),
+            ]
+            if url:
+                lr_cell.append(Spacer(1, 2))
+                lr_cell.append(Paragraph(f"<a href='{html.escape(url)}' color='blue'><u>View Resource Link</u></a>", body_style))
+
+            lr_cards.append([lr_cell])
+
+        if lr_cards:
+            lr_table = Table(lr_cards, colWidths=[540])
+            lr_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#EFF6FF")),
+                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor("#93C5FD")),
+                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                ('LEFTPADDING', (0, 0), (-1, -1), 12),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+            ]))
+            story.append(KeepTogether([lr_table, Spacer(1, 12)]))
 
     # FOOTER
     story.append(Spacer(1, 10))

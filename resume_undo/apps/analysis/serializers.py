@@ -66,6 +66,7 @@ class SkillGapAnalysisSerializer(serializers.ModelSerializer):
     recommended_projects = serializers.SerializerMethodField()
     recommended_certifications = serializers.SerializerMethodField()
     resume_transition_tips = serializers.SerializerMethodField()
+    learning_resources = serializers.SerializerMethodField()
 
     class Meta:
         model = SkillGapAnalysis
@@ -103,6 +104,9 @@ class SkillGapAnalysisSerializer(serializers.ModelSerializer):
 
     def get_resume_transition_tips(self, obj):
         return self._get_lp(obj).get("resume_transition_tips", [])
+
+    def get_learning_resources(self, obj):
+        return self._get_lp(obj).get("learning_resources", [])
 
 class CareerRoadmapSerializer(serializers.ModelSerializer):
     projects = serializers.SerializerMethodField()
