@@ -15,6 +15,8 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final user = await remoteDataSource.login(email, password);
       return Result.success(user);
+    } on Requires2FAException catch (e) {
+      return Result.failure(Requires2FAFailure(e.email));
     } on ServerException catch (e) {
       return Result.failure(ServerFailure(e.message));
     } catch (e) {
@@ -87,6 +89,38 @@ class AuthRepositoryImpl implements AuthRepository {
       return Result.success(isAuth);
     } catch (e) {
       return const Result.success(false);
+    }
+  }
+
+  @override
+  Future<Result<UserEntity>> googleSignIn({required String token}) async {
+    try {
+      final user = await remoteDataSource.googleSignIn(token);
+      return Result.success(user);
+    } on Requires2FAException catch (e) {
+      return Result.failure(Requires2FAFailure(e.email));
+    } on ServerException catch (e) {
+      return Result.failure(ServerFailure(e.message));
+    } catch (e) {
+      return Result.failure(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Result<Map<String, dynamic>>> totpSetup() async {
+    // Left unimplemented for now unless full UI is built, can just return success
+    return const Result.success({});
+  }
+
+  @override
+  Future<Result<UserEntity>> totpVerify({required String email, required String code}) async {
+    try {
+      final user = await remoteDataSource.totpVerify(email, code);
+      return Result.success(user);
+    } on ServerException catch (e) {
+      return Result.failure(ServerFailure(e.message));
+    } catch (e) {
+      return Result.failure(ServerFailure(e.toString()));
     }
   }
 }

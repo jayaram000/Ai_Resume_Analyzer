@@ -27,3 +27,11 @@ class BaseResumeRepository(ABC):
     @abstractmethod
     def delete_resume(self, resume_id: str, user) -> bool:
         pass
+
+    @abstractmethod
+    def delete_all_resumes(self, user) -> int:
+        pass
+
+    @abstractmethod
+    def cleanup_all_user_analysis(self, user) -> None:
+        pass

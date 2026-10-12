@@ -1,5 +1,6 @@
 from rest_framework import status, permissions
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 from resumes.models import Resume
@@ -54,6 +55,8 @@ from analysis.services.cover_letter_service import (
 
 class BaseAnalysisView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai_analysis'
 
     def get_resume(self, resume_id, user):
         try:
@@ -389,6 +392,8 @@ class AutoTailorResumeView(BaseAnalysisView):
 
 class SkillGapAnalysisView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsPremiumUser]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai_analysis'
 
     def get(self, request):
         from analysis.models import SkillGapAnalysis
@@ -462,6 +467,8 @@ class DownloadSkillGapPDFView(APIView):
 
 class CareerRoadmapView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsPremiumUser]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'ai_analysis'
 
     def get(self, request):
         from analysis.models import CareerRoadmap

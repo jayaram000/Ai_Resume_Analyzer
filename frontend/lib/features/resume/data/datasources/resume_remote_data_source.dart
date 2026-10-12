@@ -7,6 +7,7 @@ abstract class ResumeRemoteDataSource {
   Future<List<ResumeModel>> getMyResumes();
   Future<ResumeModel> uploadResume({required dynamic fileBytes, required String fileName, String? title});
   Future<void> deleteResume(String resumeId);
+  Future<void> deleteAllResumes();
   Future<ATSAnalysisModel> getATSAnalysis(String resumeId);
   Future<ResumeImprovementModel> getResumeImprovement(String resumeId, {bool refresh = false});
   Future<String> getResumeContent(String resumeId, {String type = 'diff_improved', bool refresh = false});
@@ -64,6 +65,15 @@ class ResumeRemoteDataSourceImpl implements ResumeRemoteDataSource {
   Future<void> deleteResume(String resumeId) async {
     try {
       await apiClient.delete('resumes/$resumeId/');
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> deleteAllResumes() async {
+    try {
+      await apiClient.delete('resumes/delete-all/');
     } catch (e) {
       throw ServerException(e.toString());
     }

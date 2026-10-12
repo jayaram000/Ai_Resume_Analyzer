@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:frontend/core/error/failures.dart' hide AuthFailure;
 import 'package:frontend/core/usecases/usecase.dart';
 import 'package:frontend/features/auth/domain/repositories/auth_repository.dart';
 import 'package:frontend/features/auth/domain/usecases/auth_usecases.dart';
@@ -13,6 +14,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<LoginRequested>(_onLoginRequested);
     on<RegisterRequested>(_onRegisterRequested);
     on<LogoutRequested>(_onLogoutRequested);
+    on<GoogleSignInRequested>(_onGoogleSignInRequested);
+    on<TOTPVerifyRequested>(_onTOTPVerifyRequested);
   }
 
   Future<void> _onAuthCheckRequested(AuthCheckRequested event, Emitter<AuthState> emit) async {
@@ -61,7 +64,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         },
       ));
     } else {
-      emit(AuthFailure(message: result.failure?.message ?? 'Invalid email or password.'));
+      if (result.failure is Requires2FAFailure) {
+        emit(AuthRequires2FA(email: (result.failure as Requires2FAFailure).email));
+      } else {
+        emit(AuthFailure(message: result.failure?.message ?? 'Invalid email or password.'));
+      }
     }
   }
 
@@ -86,5 +93,53 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final logoutUseCase = LogoutUseCase(authRepository);
     await logoutUseCase(const NoParams());
     emit(Unauthenticated());
+  }
+
+  Future<void> _onGoogleSignInRequested(GoogleSignInRequested event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    final result = await authRepository.googleSignIn(token: event.token);
+    if (result.isSuccess && result.data != null) {
+      final user = result.data!;
+      emit(Authenticated(
+        email: user.email,
+        userData: {
+          'id': user.id,
+          'email': user.email,
+          'username': user.username,
+          'full_name': user.fullName,
+          'is_staff': user.isStaff,
+          'is_premium': user.isPremium,
+        },
+      ));
+    } else {
+      if (result.failure is Requires2FAFailure) {
+        emit(AuthRequires2FA(email: (result.failure as Requires2FAFailure).email));
+      } else {
+        emit(AuthFailure(message: result.failure?.message ?? 'Google Sign-In failed.'));
+      }
+    }
+  }
+
+  Future<void> _onTOTPVerifyRequested(TOTPVerifyRequested event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    final result = await authRepository.totpVerify(email: event.email, code: event.code);
+    if (result.isSuccess && result.data != null) {
+      final user = result.data!;
+      emit(Authenticated(
+        email: user.email,
+        userData: {
+          'id': user.id,
+          'email': user.email,
+          'username': user.username,
+          'full_name': user.fullName,
+          'is_staff': user.isStaff,
+          'is_premium': user.isPremium,
+        },
+      ));
+    } else {
+      emit(AuthFailure(message: result.failure?.message ?? 'Invalid 2FA code.'));
+      // Keep them in Requires2FA state so they can try again.
+      emit(AuthRequires2FA(email: event.email));
+    }
   }
 }

@@ -6,6 +6,8 @@ import 'package:frontend/features/auth/bloc/auth_event.dart';
 import 'package:frontend/features/auth/bloc/auth_state.dart';
 import 'package:frontend/features/dashboard/screens/dashboard_screen.dart';
 import 'package:frontend/features/auth/screens/forgot_password_screen.dart';
+import 'package:frontend/features/auth/screens/totp_verify_screen.dart';
+import 'package:frontend/features/auth/screens/reset_password_screen.dart';
 
 import 'package:frontend/features/dashboard/cubit/usage_cubit.dart';
 import 'package:frontend/core/theme/app_theme.dart';
@@ -46,6 +48,18 @@ class MyApp extends StatelessWidget {
             darkTheme: AppTheme.darkTheme,
             themeMode: currentMode,
             home: const AuthWrapper(),
+            onGenerateRoute: (settings) {
+              if (settings.name != null && settings.name!.startsWith('/reset-password')) {
+                final uri = Uri.parse(settings.name!);
+                final token = uri.queryParameters['token'];
+                if (token != null) {
+                  return MaterialPageRoute(
+                    builder: (context) => ResetPasswordScreen(initialToken: token),
+                  );
+                }
+              }
+              return null;
+            },
           );
         },
       ),
@@ -59,7 +73,14 @@ class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return BlocBuilder<AuthBloc, AuthState>(
+    return BlocConsumer<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is Authenticated) {
+          context.read<UsageCubit>().fetchUsageStatus();
+        } else if (state is Unauthenticated) {
+          context.read<UsageCubit>().reset();
+        }
+      },
       builder: (context, state) {
         if (state is AuthLoading) {
           return Scaffold(
@@ -72,6 +93,8 @@ class AuthWrapper extends StatelessWidget {
           );
         } else if (state is Authenticated) {
           return DashboardScreen(email: state.email, userData: state.userData);
+        } else if (state is AuthRequires2FA) {
+          return TOTPVerifyScreen(email: state.email);
         } else {
           return const LoginScreen();
         }
@@ -91,6 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _obscurePassword = true;
 
   @override
   Widget build(BuildContext context) {
@@ -193,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Password Form
                   TextFormField(
                     controller: _passwordController,
-                    obscureText: true,
+                    obscureText: _obscurePassword,
                     style: TextStyle(color: textPrimary),
                     decoration: InputDecoration(
                       labelText: "PASSWORD",
@@ -201,6 +225,18 @@ class _LoginScreenState extends State<LoginScreen> {
                       hintText: "••••••••",
                       hintStyle: TextStyle(color: textSecondary.withValues(alpha: 0.5)),
                       prefixIcon: Icon(Icons.lock_outline, color: textSecondary, size: 18),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          color: textSecondary,
+                          size: 18,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty || value.length < 8) {

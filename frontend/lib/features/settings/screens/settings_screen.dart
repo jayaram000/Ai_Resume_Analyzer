@@ -5,6 +5,7 @@ import 'package:frontend/core/di/injection.dart';
 import 'package:frontend/features/auth/bloc/auth_bloc.dart';
 import 'package:frontend/features/auth/bloc/auth_event.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/features/settings/screens/change_password_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -169,6 +170,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _isSaving = false;
       });
+    }
+  }
+
+  Future<void> _sendResetPasswordEmail() async {
+    if (_userEmail.isEmpty) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await sl<ApiClient>().post('auth/forgot-password/', data: {
+        'email': _userEmail,
+      });
+
+      if (mounted) {
+        if (response.statusCode == 200 && response.data['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text("Password reset link sent to your email!"),
+              backgroundColor: AppColors.resolveForest(Theme.of(context).brightness == Brightness.dark),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.data['message'] ?? "Failed to send reset link."),
+              backgroundColor: AppColors.resolveBrick(Theme.of(context).brightness == Brightness.dark),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("An error occurred. Please try again."),
+            backgroundColor: AppColors.resolveBrick(Theme.of(context).brightness == Brightness.dark),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -518,6 +566,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             style: TextStyle(color: inkSoft, fontSize: 12),
                           ),
                           const SizedBox(height: 18),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 44,
+                            child: OutlinedButton.icon(
+                              onPressed: _sendResetPasswordEmail,
+                              icon: Icon(Icons.lock_reset, color: cobalt, size: 16),
+                              label: Text(
+                                "RESET PASSWORD",
+                                style: TextStyle(
+                                  color: cobalt,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: cobalt.withValues(alpha: 0.5)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                backgroundColor: cobalt.withValues(alpha: 0.08),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 44,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+                                );
+                              },
+                              icon: Icon(Icons.password_rounded, color: cobalt, size: 16),
+                              label: Text(
+                                "CHANGE PASSWORD",
+                                style: TextStyle(
+                                  color: cobalt,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: cobalt.withValues(alpha: 0.5)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                backgroundColor: cobalt.withValues(alpha: 0.08),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
                           SizedBox(
                             width: double.infinity,
                             height: 44,

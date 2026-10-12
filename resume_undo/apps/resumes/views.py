@@ -127,6 +127,20 @@ class ResumeViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(
+        summary="Delete All Resumes",
+        description="Deletes all uploaded resumes for the user and purges all associated analysis records.",
+        responses={200: "All Resumes Deleted"},
+    )
+    @action(detail=False, methods=["delete", "post"], url_path="delete-all")
+    def delete_all(self, request, *args, **kwargs):
+        count = self.resume_repo.delete_all_resumes(request.user)
+        return Response({
+            "status": "success",
+            "message": f"Successfully deleted {count} resumes and cleared all associated analysis data.",
+            "deleted_count": count
+        }, status=status.HTTP_200_OK)
+
+    @extend_schema(
         summary="Compare Two Resume Dossiers",
         description="Audits diffs between two resumes, computing ATS metrics and skill/keyword adjustments.",
         responses={200: "Comparison Result", 400: "Bad Request", 404: "Not Found"},

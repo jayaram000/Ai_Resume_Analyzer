@@ -9,4 +9,7 @@ abstract class AuthRepository {
   Future<Result<void>> forgotPassword({required String email});
   Future<Result<void>> logout();
   Future<Result<bool>> isAuthenticated();
+  Future<Result<UserEntity>> googleSignIn({required String token});
+  Future<Result<Map<String, dynamic>>> totpSetup();
+  Future<Result<UserEntity>> totpVerify({required String email, required String code});
 }

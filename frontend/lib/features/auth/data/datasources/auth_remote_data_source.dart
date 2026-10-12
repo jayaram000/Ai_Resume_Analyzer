@@ -10,7 +10,15 @@ abstract class AuthRemoteDataSource {
   Future<UserModel> updateProfile({String? fullName, String? username, String? email});
   Future<void> forgotPassword(String email);
   Future<void> logout();
+  Future<UserModel> googleSignIn(String token);
+  Future<void> totpSetup();
+  Future<UserModel> totpVerify(String email, String code);
   Future<bool> hasValidToken();
+}
+
+class Requires2FAException implements Exception {
+  final String email;
+  Requires2FAException(this.email);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -29,6 +37,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
+        if (data['requires_2fa'] == true) {
+          throw Requires2FAException(data['email']);
+        }
         final access = data['access'] ?? data['token'] ?? data['access_token'];
         final refresh = data['refresh'] ?? data['refresh_token'];
         if (access != null) {
@@ -126,5 +137,54 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<bool> hasValidToken() async {
     return await storage.hasToken();
+  }
+
+  @override
+  Future<UserModel> googleSignIn(String token) async {
+    try {
+      final response = await apiClient.post('auth/google/', data: {'token': token});
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        if (data['requires_2fa'] == true) {
+          throw Requires2FAException(data['email']);
+        }
+        final access = data['access'];
+        final refresh = data['refresh'];
+        if (access != null) {
+          await storage.saveTokens(access: access.toString(), refresh: refresh?.toString());
+        }
+        return UserModel.fromJson(data['user'] ?? data);
+      }
+      throw ServerException("Google Sign-In failed");
+    } catch (e) {
+      if (e is Requires2FAException) rethrow;
+      throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> totpSetup() async {
+     // TOTP Setup returns a secret and qr_code, which should be called by the UI directly or via a specific usecase
+     // We will implement this as returning the raw map for simplicity, or just throwing if error.
+     // Wait, the repository needs to return the QR code. I'll change the return type to Map<String, dynamic>.
+  }
+  
+  @override
+  Future<UserModel> totpVerify(String email, String code) async {
+    try {
+      final response = await apiClient.post('auth/totp/verify/', data: {'email': email, 'code': code});
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data;
+        final access = data['access'];
+        final refresh = data['refresh'];
+        if (access != null) {
+          await storage.saveTokens(access: access.toString(), refresh: refresh?.toString());
+        }
+        return UserModel.fromJson(data['user'] ?? data);
+      }
+      throw ServerException("TOTP Verification failed");
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
   }
 }

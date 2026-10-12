@@ -21,3 +21,14 @@ class RegisterRequested extends AuthEvent {
 }
 
 class LogoutRequested extends AuthEvent {}
+
+class GoogleSignInRequested extends AuthEvent {
+  final String token;
+  GoogleSignInRequested({required this.token});
+}
+
+class TOTPVerifyRequested extends AuthEvent {
+  final String email;
+  final String code;
+  TOTPVerifyRequested({required this.email, required this.code});
+}

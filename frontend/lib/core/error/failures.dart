@@ -21,3 +21,8 @@ class AuthFailure extends Failure {
 class CacheFailure extends Failure {
   const CacheFailure([String message = "Local cache error occurred."]) : super(message);
 }
+
+class Requires2FAFailure extends Failure {
+  final String email;
+  const Requires2FAFailure(this.email) : super("Two-factor authentication required.");
+}

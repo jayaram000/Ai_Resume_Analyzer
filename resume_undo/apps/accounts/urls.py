@@ -6,7 +6,11 @@ from accounts.views import (
     PasswordResetRequestView,
     PasswordResetConfirmView,
     UserProfileView,
-    CustomTokenObtainPairView
+    CustomTokenObtainPairView,
+    GoogleLoginView,
+    TOTPSetupView,
+    TOTPVerifyView,
+    ChangePasswordView
 )
 
 urlpatterns = [
@@ -17,4 +21,8 @@ urlpatterns = [
     path("forgot-password/", PasswordResetRequestView.as_view(), name="auth-forgot-password"),
     path("reset-password/", PasswordResetConfirmView.as_view(), name="auth-reset-password"),
     path("profile/", UserProfileView.as_view(), name="user-profile"),
+    path("google/", GoogleLoginView.as_view(), name="auth-google"),
+    path("totp/setup/", TOTPSetupView.as_view(), name="auth-totp-setup"),
+    path("totp/verify/", TOTPVerifyView.as_view(), name="auth-totp-verify"),
+    path("change-password/", ChangePasswordView.as_view(), name="auth-change-password"),
 ]

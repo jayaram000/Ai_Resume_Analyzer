@@ -5,6 +5,7 @@ abstract class ResumeRepository {
   Future<Result<List<ResumeEntity>>> getMyResumes();
   Future<Result<ResumeEntity>> uploadResume({required dynamic fileBytes, required String fileName, String? title});
   Future<Result<void>> deleteResume(String resumeId);
+  Future<Result<void>> deleteAllResumes();
   Future<Result<ATSAnalysisEntity>> getATSAnalysis(String resumeId);
   Future<Result<ResumeImprovementEntity>> getResumeImprovement(String resumeId, {bool refresh = false});
   Future<Result<String>> getResumeContent(String resumeId, {String type = 'diff_improved', bool refresh = false});

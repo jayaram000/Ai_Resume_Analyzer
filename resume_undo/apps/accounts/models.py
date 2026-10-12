@@ -32,6 +32,15 @@ class User(AbstractUser):
         default=False
     )
 
+    totp_secret = models.CharField(
+        max_length=32,
+        blank=True,
+        null=True
+    )
+    is_totp_enabled = models.BooleanField(
+        default=False
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True
     )

@@ -555,6 +555,7 @@ class JobAggregationService:
 def calculate_recommendations(user) -> list:
     latest_resume = Resume.objects.filter(user=user).order_by("-created_at").first()
     if not latest_resume:
+        JobRecommendation.objects.filter(user=user).delete()
         return []
     
     parsed = getattr(latest_resume, "parsed_content", None)

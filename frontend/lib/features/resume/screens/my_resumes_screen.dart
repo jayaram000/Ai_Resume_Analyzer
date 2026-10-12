@@ -10,7 +10,9 @@ import 'package:frontend/features/resume/screens/resume_comparison_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MyResumesScreen extends StatefulWidget {
-  const MyResumesScreen({super.key});
+  final VoidCallback? onResumesChanged;
+
+  const MyResumesScreen({super.key, this.onResumesChanged});
 
   @override
   State<MyResumesScreen> createState() => _MyResumesScreenState();
@@ -44,7 +46,46 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
     }
   }
 
-  Future<void> _deleteResume(String id) async {
+  Future<void> _deleteResume(String id, String title) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.resolvePaperAlt(isDark),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: AppColors.resolveRule(isDark)),
+        ),
+        title: Text(
+          "Delete Resume",
+          style: AppTypography.displayHeading(color: AppColors.resolveInk(isDark), fontSize: 16),
+        ),
+        content: Text(
+          _resumes.length == 1
+              ? "Are you sure you want to delete '$title'?\n\nSince this is your only resume, deleting it will also completely clear all associated AI analysis, ATS audits, and career scores."
+              : "Are you sure you want to delete '$title'?",
+          style: AppTypography.bodyRegular(color: AppColors.resolveInkSoft(isDark), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text("Cancel", style: TextStyle(color: AppColors.resolveInkSoft(isDark))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.resolveBrick(isDark),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     try {
       final result = await sl<ResumeRepository>().deleteResume(id);
       if (result.isSuccess) {
@@ -53,12 +94,78 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
             const SnackBar(content: Text("Resume deleted successfully.")),
           );
         }
-        _loadResumes();
+        await _loadResumes();
+        widget.onResumesChanged?.call();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Failed to delete resume.")),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteAllResumes() async {
+    if (_resumes.isEmpty) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.resolvePaperAlt(isDark),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+          side: BorderSide(color: AppColors.resolveRule(isDark)),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.resolveBrick(isDark), size: 20),
+            const SizedBox(width: 8),
+            Text(
+              "Delete All Resumes?",
+              style: AppTypography.displayHeading(color: AppColors.resolveInk(isDark), fontSize: 16),
+            ),
+          ],
+        ),
+        content: Text(
+          "Are you sure you want to delete all ${_resumes.length} resumes?\n\nThis will permanently delete all uploaded files and completely erase all associated AI analysis, ATS audit history, skill gap reports, and career scores.",
+          style: AppTypography.bodyRegular(color: AppColors.resolveInkSoft(isDark), fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text("Cancel", style: TextStyle(color: AppColors.resolveInkSoft(isDark))),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.resolveBrick(isDark),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+            ),
+            child: const Text("Delete All"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final result = await sl<ResumeRepository>().deleteAllResumes();
+      if (result.isSuccess) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("All resumes and analysis data deleted successfully.")),
+          );
+        }
+        await _loadResumes();
+        widget.onResumesChanged?.call();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to delete all resumes.")),
         );
       }
     }
@@ -99,6 +206,7 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
     final inkSoft = AppColors.resolveInkSoft(isDark);
     final rule = AppColors.resolveRule(isDark);
     final cobalt = AppColors.resolveCobalt(isDark);
+    final brick = AppColors.resolveBrick(isDark);
 
     if (_isLoading) {
       return Center(
@@ -148,25 +256,46 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
                   ),
                 ],
               ),
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ResumeComparisonScreen(),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_resumes.isNotEmpty) ...[
+                    OutlinedButton.icon(
+                      onPressed: _deleteAllResumes,
+                      icon: Icon(Icons.delete_sweep_outlined, size: 16, color: brick),
+                      label: Text("Delete All", style: TextStyle(color: brick)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: brick,
+                        side: BorderSide(color: brick.withValues(alpha: 0.6), width: 1.2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                      ),
                     ),
-                  );
-                },
-                icon: const Icon(Icons.compare_arrows_rounded, size: 16),
-                label: const Text("Compare Resumes"),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: cobalt,
-                  side: BorderSide(color: cobalt, width: 1.2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+                    const SizedBox(width: 10),
+                  ],
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ResumeComparisonScreen(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.compare_arrows_rounded, size: 16),
+                    label: const Text("Compare Resumes"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: cobalt,
+                      side: BorderSide(color: cobalt, width: 1.2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                ),
+                ],
               ),
             ],
           ),
@@ -218,7 +347,7 @@ class _MyResumesScreenState extends State<MyResumesScreen> {
                     onTap: () => _openAnalysis(res),
                     onViewAnalysis: () => _openAnalysis(res),
                     onViewPdf: res.fileUrl != null ? () => _openPdf(res.fileUrl) : null,
-                    onDelete: () => _deleteResume(res.id),
+                    onDelete: () => _deleteResume(res.id, res.title),
                   );
                 },
               ),

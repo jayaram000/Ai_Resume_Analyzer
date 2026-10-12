@@ -1152,7 +1152,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 0:
         return _buildDashboardMainContent(isDark);
       case 1:
-        return const MyResumesScreen();
+        return MyResumesScreen(
+          onResumesChanged: _loadDashboardData,
+        );
       case 2:
         return const SelectedJobsScreen();
       case 3:
@@ -1198,6 +1200,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (index == 3) target = 4;
     if (index == 4) target = 7;
     setState(() => _selectedIndex = target);
+    if (target == 0) {
+      _loadDashboardData();
+    }
   }
 
   @override
@@ -1218,7 +1223,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     WebSidebar(
                       selectedIndex: _selectedIndex,
                       isPremium: _isPremium,
-                      onItemSelected: (index) => setState(() => _selectedIndex = index),
+                      onItemSelected: (index) {
+                        setState(() => _selectedIndex = index);
+                        if (index == 0) {
+                          _loadDashboardData();
+                        }
+                      },
                       onUpgradePressed: () => setState(() => _selectedIndex = 5),
                       onLogoutPressed: () => _confirmLogout(context),
                     ),

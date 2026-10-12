@@ -55,6 +55,11 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
+        if hasattr(self.user, 'is_totp_enabled') and self.user.is_totp_enabled:
+            return {
+                "requires_2fa": True,
+                "email": self.user.email
+            }
         data["user"] = UserSerializer(self.user).data
         return data
 
@@ -87,3 +92,7 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 class PasswordResetConfirmSerializer(serializers.Serializer):
     token = serializers.CharField()
     new_password = serializers.CharField(min_length=8)
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(min_length=8, required=True)

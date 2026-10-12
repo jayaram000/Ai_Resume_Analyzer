@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/di/injection.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/features/auth/screens/reset_password_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -202,6 +203,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             ),
                           ),
                         ),
+                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ResetPasswordScreen()),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: textSecondary,
+                    ),
+                    child: const Text("I already have a reset token", style: TextStyle(fontSize: 12)),
+                  ),
                 ],
               ),
             ),

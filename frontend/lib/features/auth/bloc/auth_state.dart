@@ -21,3 +21,9 @@ class AuthFailure extends AuthState {
 
   AuthFailure({required this.message});
 }
+
+class AuthRequires2FA extends AuthState {
+  final String email;
+
+  AuthRequires2FA({required this.email});
+}

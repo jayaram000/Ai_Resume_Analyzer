@@ -47,6 +47,18 @@ class ResumeRepositoryImpl implements ResumeRepository {
   }
 
   @override
+  Future<Result<void>> deleteAllResumes() async {
+    try {
+      await remoteDataSource.deleteAllResumes();
+      return const Result.success(null);
+    } on ServerException catch (e) {
+      return Result.failure(ServerFailure(e.message));
+    } catch (e) {
+      return Result.failure(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<Result<ATSAnalysisEntity>> getATSAnalysis(String resumeId) async {
     try {
       final analysis = await remoteDataSource.getATSAnalysis(resumeId);

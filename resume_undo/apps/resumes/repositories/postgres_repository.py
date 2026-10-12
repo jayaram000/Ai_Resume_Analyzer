@@ -40,5 +40,46 @@ class PostgresResumeRepository(BaseResumeRepository):
             resume.file.delete(save=False)
             resume.delete()
             logger.info(f"Deleted Resume ID {resume_id} for user {user.email}")
+            
+            # If all resumes for this user are now deleted, wipe all residual analysis records
+            if Resume.objects.filter(user=user).count() == 0:
+                self.cleanup_all_user_analysis(user)
+                
             return True
         return False
+
+    def delete_all_resumes(self, user) -> int:
+        resumes = Resume.objects.filter(user=user)
+        count = resumes.count()
+        for r in resumes:
+            if r.file:
+                try:
+                    r.file.delete(save=False)
+                except Exception as e:
+                    logger.warning(f"Failed to delete file for resume {r.id}: {e}")
+        resumes.delete()
+        self.cleanup_all_user_analysis(user)
+        logger.info(f"Deleted all {count} resumes and purged analyses for user {user.email}")
+        return count
+
+    def cleanup_all_user_analysis(self, user) -> None:
+        """
+        Clears all residual user-level analyses and snapshots when no resumes exist.
+        """
+        try:
+            from analysis.models import (
+                SkillGapAnalysis,
+                CareerRoadmap,
+                CareerReadinessSnapshot,
+            )
+            from jobs.models import JobRecommendation
+            from common.models import ExportHistory
+
+            SkillGapAnalysis.objects.filter(user=user).delete()
+            CareerRoadmap.objects.filter(user=user).delete()
+            CareerReadinessSnapshot.objects.filter(user=user).delete()
+            JobRecommendation.objects.filter(user=user).delete()
+            ExportHistory.objects.filter(user=user).delete()
+            logger.info(f"Cleaned up all analysis records and recommendations for user {user.email}")
+        except Exception as e:
+            logger.error(f"Error cleaning up user analyses for {user.email}: {e}", exc_info=True)

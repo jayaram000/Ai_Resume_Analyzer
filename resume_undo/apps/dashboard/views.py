@@ -18,43 +18,49 @@ class DashboardStatsView(APIView):
         # 2. Saved Jobs Count
         saved_jobs_count = SelectedJob.objects.filter(user=user, status=SelectedJob.StatusChoices.SAVED).count()
 
-        # 3. Recommended Jobs Count
-        recommended_jobs_count = JobRecommendation.objects.filter(user=user).count()
+        # 3. Recommended Jobs Count (only if user has resumes)
+        recommended_jobs_count = JobRecommendation.objects.filter(user=user).count() if resumes_count > 0 else 0
         
         # 4. Total Jobs in Cache/Database
         total_jobs_found = Job.objects.count()
         
         # 5. Aggregate ATS Scores
-        ats_aggregates = ATSAnalysis.objects.filter(
-            resume__user=user
-        ).aggregate(
-            max_score=Max('ats_score'),
-            min_score=Min('ats_score'),
-            avg_score=Avg('ats_score')
-        )
-        
-        best_score = ats_aggregates['max_score'] or 0
-        lowest_score = ats_aggregates['min_score'] or 0
-        career_readiness = int(ats_aggregates['avg_score'] or 0)
-        
-        # 6. ATS Trends
+        best_score = 0
+        lowest_score = 0
+        career_readiness = 0
         ats_trends = []
-        all_user_analyses = ATSAnalysis.objects.filter(
-            resume__user=user
-        ).order_by("created_at")
-        
-        for analysis in all_user_analyses:
-            ats_trends.append({
-                "date": analysis.created_at.strftime("%Y-%m-%d"),
-                "score": analysis.ats_score,
-                "resume_title": analysis.resume.title
-            })
+
+        if resumes_count > 0:
+            ats_aggregates = ATSAnalysis.objects.filter(
+                resume__user=user
+            ).aggregate(
+                max_score=Max('ats_score'),
+                min_score=Min('ats_score'),
+                avg_score=Avg('ats_score')
+            )
+            
+            best_score = ats_aggregates['max_score'] or 0
+            lowest_score = ats_aggregates['min_score'] or 0
+            career_readiness = int(ats_aggregates['avg_score'] or 0)
+            
+            # 6. ATS Trends
+            all_user_analyses = ATSAnalysis.objects.filter(
+                resume__user=user
+            ).order_by("created_at")
+            
+            for analysis in all_user_analyses:
+                ats_trends.append({
+                    "date": analysis.created_at.strftime("%Y-%m-%d"),
+                    "score": analysis.ats_score,
+                    "resume_title": analysis.resume.title
+                })
             
         # 7. Skill Coverage Calculation
         skill_coverage_count = 0
-        latest_resume = Resume.objects.filter(user=user).order_by("-created_at").first()
-        if latest_resume and hasattr(latest_resume, "parsed_content"):
-            skill_coverage_count = len(latest_resume.parsed_content.extracted_skills)
+        if resumes_count > 0:
+            latest_resume = Resume.objects.filter(user=user).order_by("-created_at").first()
+            if latest_resume and hasattr(latest_resume, "parsed_content"):
+                skill_coverage_count = len(latest_resume.parsed_content.extracted_skills)
             
         applied_jobs_count = SelectedJob.objects.filter(user=user, status=SelectedJob.StatusChoices.APPLIED).count()
 

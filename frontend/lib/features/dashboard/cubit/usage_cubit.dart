@@ -65,4 +65,8 @@ class UsageCubit extends Cubit<UsageState> {
   void setUnlimited(bool unlimited) {
     emit(state.copyWith(isUnlimited: unlimited));
   }
+
+  void reset() {
+    emit(const UsageState());
+  }
 }

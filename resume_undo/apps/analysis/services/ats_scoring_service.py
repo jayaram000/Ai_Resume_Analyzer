@@ -171,20 +171,33 @@ class CareerScoreService:
         from jobs.models import JobRecommendation, SelectedJob
 
         latest_resume = Resume.objects.filter(user=user).order_by("-created_at").first()
+        if not latest_resume:
+            return {
+                "career_score": 0,
+                "factors": {
+                    "ats": 0,
+                    "skills": 0,
+                    "completeness": 0,
+                    "experience": 0,
+                    "job_match": 0,
+                    "profile": 0,
+                },
+                "created_at": None,
+            }
+
         ats_score = 0
         parsed = None
-        if latest_resume:
-            ats_obj = latest_resume.ats_analyses.order_by("-created_at").first()
-            if ats_obj:
-                ats_score = ats_obj.ats_score
-            else:
-                from analysis.services import ATSScoringService
-                try:
-                    ats_res = ATSScoringService.calculate_ats_score(latest_resume)
-                    ats_score = ats_res.get("ats_score", 0)
-                except Exception:
-                    ats_score = 0
-            parsed = getattr(latest_resume, "parsed_content", None)
+        ats_obj = latest_resume.ats_analyses.order_by("-created_at").first()
+        if ats_obj:
+            ats_score = ats_obj.ats_score
+        else:
+            from analysis.services import ATSScoringService
+            try:
+                ats_res = ATSScoringService.calculate_ats_score(latest_resume)
+                ats_score = ats_res.get("ats_score", 0)
+            except Exception:
+                ats_score = 0
+        parsed = getattr(latest_resume, "parsed_content", None)
 
         skills = []
         if parsed and parsed.extracted_skills:
@@ -285,6 +298,9 @@ class CareerScoreService:
 
     @staticmethod
     def get_trend_data(user) -> list:
+        from resumes.models import Resume
+        if not Resume.objects.filter(user=user).exists():
+            return []
         from analysis.models import CareerReadinessSnapshot
         snapshots = CareerReadinessSnapshot.objects.filter(user=user).order_by("created_at")
         trend = []
@@ -299,6 +315,9 @@ class CareerScoreService:
     def get_recommended_actions(factors: dict) -> list:
         if not isinstance(factors, dict):
             factors = {}
+        if not any(factors.values()):
+            return ["Upload a resume to begin your career analysis and receive AI-driven recommendations."]
+
         actions = []
         if factors.get("ats", 0) < 80:
             actions.append("Optimize your resume's keywords and formatting to boost ATS compatibility.")
@@ -314,3 +333,4 @@ class CareerScoreService:
             actions.append("Complete your user profile, adding LinkedIn and GitHub URLs to improve recruiter outreach.")
         if not actions:
             actions.append("Excellent career readiness! Keep updating your skills and certifications.")
+        return actions
