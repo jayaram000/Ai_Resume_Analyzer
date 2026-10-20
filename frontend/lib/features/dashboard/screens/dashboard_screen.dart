@@ -26,7 +26,11 @@ class DashboardScreen extends StatefulWidget {
   final String email;
   final Map<String, dynamic> userData;
 
-  const DashboardScreen({super.key, required this.email, required this.userData});
+  const DashboardScreen({
+    super.key,
+    required this.email,
+    required this.userData,
+  });
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -37,9 +41,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = true;
   bool _isAnalyzingResume = false;
   bool _isPremium = false;
+  // ignore: unused_field
   String? _errorMessage;
-
   Map<String, dynamic> _stats = {};
+  // ignore: unused_field
   Map<String, dynamic> _careerScore = {};
   Map<String, dynamic> _jobStats = {};
   List<dynamic> _resumes = [];
@@ -47,7 +52,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _isPremium = (widget.userData['is_premium'] == true) || (widget.userData['is_staff'] == true);
+    _isPremium =
+        (widget.userData['is_premium'] == true) ||
+        (widget.userData['is_staff'] == true);
     _loadDashboardData();
   }
 
@@ -67,9 +74,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final subRes = await sl<ApiClient>().get('subscriptions/active/');
         if (subRes.statusCode == 200 && subRes.data is Map) {
           final subData = subRes.data['data'];
-          if (subData != null && subData is Map && subData['status'] == 'active') {
+          if (subData != null &&
+              subData is Map &&
+              subData['status'] == 'active') {
             _isPremium = true;
-          } else if (subData == null && !(widget.userData['is_staff'] == true || widget.userData['is_superuser'] == true)) {
+          } else if (subData == null &&
+              !(widget.userData['is_staff'] == true ||
+                  widget.userData['is_superuser'] == true)) {
             _isPremium = false;
           }
         }
@@ -85,14 +96,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (resumesRes.statusCode == 200) {
           if (resumesRes.data is List) {
             _resumes = resumesRes.data;
-          } else if (resumesRes.data is Map && resumesRes.data.containsKey('data')) {
+          } else if (resumesRes.data is Map &&
+              resumesRes.data.containsKey('data')) {
             _resumes = resumesRes.data['data'];
-          } else if (resumesRes.data is Map && resumesRes.data.containsKey('results')) {
+          } else if (resumesRes.data is Map &&
+              resumesRes.data.containsKey('results')) {
             _resumes = resumesRes.data['results'];
           }
 
           if (_resumes.isNotEmpty) {
-            final firstScore = (_resumes[0]['ats_score'] as num?)?.toInt() ??
+            final firstScore =
+                (_resumes[0]['ats_score'] as num?)?.toInt() ??
                 (_resumes[0]['analysis']?['ats_score'] as num?)?.toInt() ??
                 0;
             _stats['average_ats_score'] = firstScore;
@@ -101,7 +115,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _jobStats['top_match_score'] = 0;
           }
         }
-        if (jobStatsRes.statusCode == 200 && jobStatsRes.data['success'] == true) {
+        if (jobStatsRes.statusCode == 200 &&
+            jobStatsRes.data['success'] == true) {
           _jobStats = jobStatsRes.data['data'] ?? {};
         }
       });
@@ -132,7 +147,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Uploading & Analyzing Resume with AI...")),
+        const SnackBar(
+          content: Text("Uploading & Analyzing Resume with AI..."),
+        ),
       );
 
       try {
@@ -145,7 +162,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
 
         final res = await sl<ApiClient>().post("resumes/", data: formData);
-        if (res.statusCode == 202 || res.statusCode == 201 || res.statusCode == 200) {
+        if (res.statusCode == 202 ||
+            res.statusCode == 201 ||
+            res.statusCode == 200) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text("Resume uploaded successfully! Analysis complete."),
@@ -159,7 +178,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } catch (e) {
         if (mounted) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
-          final isQuota429 = (e is DioException && e.response?.statusCode == 429) ||
+          final isQuota429 =
+              (e is DioException && e.response?.statusCode == 429) ||
               e.toString().contains("429");
 
           if (isQuota429) {
@@ -167,12 +187,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               SnackBar(
                 content: const Row(
                   children: [
-                    Icon(Icons.hourglass_empty_rounded, color: Colors.white, size: 18),
+                    Icon(
+                      Icons.hourglass_empty_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         "Please upgrade to Premium or wait for 5 hours.",
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -185,7 +212,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onPressed: () => PremiumPlanPaywall.showAsDialog(
                     context,
                     featureTitle: "Unlimited Resume Scans",
-                    featureDescription: "Remove the 3-scan limit and unlock instant, rolling-free access across all AI auditing tools.",
+                    featureDescription:
+                        "Remove the 3-scan limit and unlock instant, rolling-free access across all AI auditing tools.",
                   ),
                 ),
               ),
@@ -194,7 +222,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             PremiumPlanPaywall.showAsDialog(
               context,
               featureTitle: "Free Scan Quota Reached",
-              featureDescription: "You have completed your 3 free scans. Please upgrade to Premium or wait for 5 hours.",
+              featureDescription:
+                  "You have completed your 3 free scans. Please upgrade to Premium or wait for 5 hours.",
             );
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -230,7 +259,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         title: Row(
           children: [
-            Icon(Icons.logout_rounded, color: AppColors.resolveBrick(isDark), size: 20),
+            Icon(
+              Icons.logout_rounded,
+              color: AppColors.resolveBrick(isDark),
+              size: 20,
+            ),
             const SizedBox(width: 8),
             Text(
               "Log Out",
@@ -245,14 +278,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         content: Text(
           "Are you sure you want to log out of your account?",
-          style: TextStyle(color: AppColors.resolveInkMuted(isDark), fontSize: 13),
+          style: TextStyle(
+            color: AppColors.resolveInkMuted(isDark),
+            fontSize: 13,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.resolveInkMuted(isDark),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
             child: const Text("Cancel"),
           ),
@@ -265,16 +303,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
               backgroundColor: AppColors.resolveBrick(isDark),
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-            child: const Text("Log Out", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              "Log Out",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _openATSAnalysis(String resumeId, String resumeTitle, {int initialTabIndex = 0}) async {
+  Future<void> _openATSAnalysis(
+    String resumeId,
+    String resumeTitle, {
+    int initialTabIndex = 0,
+  }) async {
     final targetIndex = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -337,19 +384,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   return OutlinedButton.icon(
                     onPressed: ThemeController.toggleTheme,
                     icon: Icon(
-                      isNight ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                      isNight
+                          ? Icons.light_mode_outlined
+                          : Icons.dark_mode_outlined,
                       size: 15,
                       color: cobalt,
                     ),
                     label: Text(
                       isNight ? "Light Mode" : "Dark Mode",
-                      style: AppTypography.buttonText(color: cobalt, fontSize: 12),
+                      style: AppTypography.buttonText(
+                        color: cobalt,
+                        fontSize: 12,
+                      ),
                     ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: cobalt,
                       side: BorderSide(color: rule, width: 1.0),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
                   );
                 },
@@ -360,12 +417,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 icon: const Icon(Icons.upload_file_rounded, size: 16),
                 label: Text(
                   'Upload Resume',
-                  style: AppTypography.buttonText(color: Colors.white, fontSize: 12.5),
+                  style: AppTypography.buttonText(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: cobalt,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4),
@@ -381,7 +444,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   backgroundColor: brick.withValues(alpha: 0.08),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4),
-                    side: BorderSide(color: brick.withValues(alpha: 0.3), width: 1),
+                    side: BorderSide(
+                      color: brick.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   padding: const EdgeInsets.all(10),
                 ),
@@ -401,23 +467,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
           LayoutBuilder(
             builder: (context, constraints) {
               final isWide = constraints.maxWidth >= 800;
-              final cardWidth = isWide ? (constraints.maxWidth - 32) / 3 : constraints.maxWidth;
+              final cardWidth = isWide
+                  ? (constraints.maxWidth - 32) / 3
+                  : constraints.maxWidth;
 
               final int atsScore = _resumes.isNotEmpty
                   ? ((_resumes[0]['ats_score'] ??
-                      _resumes[0]['analysis']?['ats_score'] ??
-                      _stats['resume_analytics']?['best_resume_score'] ??
-                      _stats['average_ats_score']) as num?)
-                          ?.toInt() ??
-                      0
+                                    _resumes[0]['analysis']?['ats_score'] ??
+                                    _stats['resume_analytics']?['best_resume_score'] ??
+                                    _stats['average_ats_score'])
+                                as num?)
+                            ?.toInt() ??
+                        0
                   : 0;
               final int jobMatchScore = _resumes.isNotEmpty
                   ? ((_resumes[0]['job_match_score'] ??
-                      _resumes[0]['analysis']?['job_match_score'] ??
-                      _stats['career_analytics']?['career_readiness_score'] ??
-                      (atsScore > 5 ? atsScore - 5 : (atsScore > 0 ? atsScore : 0))) as num?)
-                          ?.toInt() ??
-                      0
+                                    _resumes[0]['analysis']?['job_match_score'] ??
+                                    _stats['career_analytics']?['career_readiness_score'] ??
+                                    (atsScore > 5
+                                        ? atsScore - 5
+                                        : (atsScore > 0 ? atsScore : 0)))
+                                as num?)
+                            ?.toInt() ??
+                        0
                   : 0;
 
               return Wrap(
@@ -448,7 +520,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           label: atsScore > 0 ? "ats approved" : "pending file",
                           size: 112,
                           isAnalyzing: _isAnalyzingResume,
-                          subtitle: atsScore > 0 ? "Top percentile format." : "Upload file to review.",
+                          subtitle: atsScore > 0
+                              ? "Top percentile format."
+                              : "Upload file to review.",
                         ),
                       ],
                     ),
@@ -475,10 +549,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         const SizedBox(height: 14),
                         ScoreStamp(
                           score: jobMatchScore,
-                          label: jobMatchScore > 0 ? "role match" : "unlinked jd",
+                          label: jobMatchScore > 0
+                              ? "role match"
+                              : "unlinked jd",
                           size: 112,
                           isAnalyzing: _isAnalyzingResume,
-                          subtitle: jobMatchScore > 0 ? "Direct keyword overlap." : "Paste JD to score fit.",
+                          subtitle: jobMatchScore > 0
+                              ? "Direct keyword overlap."
+                              : "Paste JD to score fit.",
                         ),
                       ],
                     ),
@@ -522,23 +600,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             'Verified Experience History',
                             'Standard Clear Formatting',
                             'Quantified Impact Metrics',
-                            'Key Industry Terminology'
-                          ].map((strength) => Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 3.5),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.check, color: forest, size: 14),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      strength,
-                                      style: AppTypography.bodyRegular(
-                                        color: ink,
-                                        fontSize: 12,
-                                      ),
+                            'Key Industry Terminology',
+                          ].map(
+                            (strength) => Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 3.5,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.check, color: forest, size: 14),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    strength,
+                                    style: AppTypography.bodyRegular(
+                                      color: ink,
+                                      fontSize: 12,
                                     ),
-                                  ],
-                                ),
-                              )),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
@@ -550,7 +632,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   MaterialPageRoute(
                                     builder: (context) => ATSAnalysisScreen(
                                       resumeId: _resumes[0]['id'].toString(),
-                                      resumeTitle: _resumes[0]['title'] ?? "Resume Analysis",
+                                      resumeTitle:
+                                          _resumes[0]['title'] ??
+                                          "Resume Analysis",
                                     ),
                                   ),
                                 );
@@ -561,12 +645,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: cobalt,
                               side: BorderSide(color: rule, width: 1),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
                               padding: const EdgeInsets.symmetric(vertical: 8),
                             ),
                             child: Text(
-                              _resumes.isNotEmpty ? 'View Full Analysis' : 'Upload Resume',
-                              style: AppTypography.buttonText(color: cobalt, fontSize: 11.5),
+                              _resumes.isNotEmpty
+                                  ? 'View Full Analysis'
+                                  : 'Upload Resume',
+                              style: AppTypography.buttonText(
+                                color: cobalt,
+                                fontSize: 11.5,
+                              ),
                             ),
                           ),
                         ),
@@ -594,9 +685,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ? Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _buildRecentResumesCard(paperAlt, rule, ink, isDark)),
+                        Expanded(
+                          child: _buildRecentResumesCard(
+                            paperAlt,
+                            rule,
+                            ink,
+                            isDark,
+                          ),
+                        ),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildQuickActionsGrid(paperAlt, rule, ink, isDark)),
+                        Expanded(
+                          child: _buildQuickActionsGrid(
+                            paperAlt,
+                            rule,
+                            ink,
+                            isDark,
+                          ),
+                        ),
                       ],
                     )
                   : Column(
@@ -611,7 +716,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 24),
           Text(
             'FIELD OPERATIONS & MODULES',
-            style: AppTypography.monoLabel(color: inkSoft, fontSize: 11).copyWith(letterSpacing: 0.6),
+            style: AppTypography.monoLabel(
+              color: inkSoft,
+              fontSize: 11,
+            ).copyWith(letterSpacing: 0.6),
           ),
           const SizedBox(height: 12),
           SingleChildScrollView(
@@ -620,7 +728,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 QuickActionCard(
                   title: 'AI Resume Optimizer',
-                  description: 'Get AI-powered suggestions to improve your resume score.',
+                  description:
+                      'Get AI-powered suggestions to improve your resume score.',
                   buttonText: 'Optimize Now',
                   icon: Icons.tune_rounded,
                   iconBgColor: AppColors.resolveForest(isDark),
@@ -632,7 +741,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         MaterialPageRoute(
                           builder: (context) => ATSAnalysisScreen(
                             resumeId: _resumes[0]['id'].toString(),
-                            resumeTitle: _resumes[0]['title'] ?? "Resume Analysis",
+                            resumeTitle:
+                                _resumes[0]['title'] ?? "Resume Analysis",
                             initialTabIndex: 0,
                           ),
                         ),
@@ -645,7 +755,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 12),
                 QuickActionCard(
                   title: 'AI Bullet Rewriter',
-                  description: 'Turn weak bullets into strong achievement statements.',
+                  description:
+                      'Turn weak bullets into strong achievement statements.',
                   buttonText: 'Rewrite Bullets',
                   icon: Icons.edit_note_rounded,
                   iconBgColor: AppColors.resolveOchre(isDark),
@@ -657,7 +768,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         MaterialPageRoute(
                           builder: (context) => ATSAnalysisScreen(
                             resumeId: _resumes[0]['id'].toString(),
-                            resumeTitle: _resumes[0]['title'] ?? "Resume Analysis",
+                            resumeTitle:
+                                _resumes[0]['title'] ?? "Resume Analysis",
                             initialTabIndex: 3,
                           ),
                         ),
@@ -670,7 +782,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 12),
                 QuickActionCard(
                   title: 'Career Roadmap',
-                  description: 'Get a personalized roadmap to achieve your target career goals.',
+                  description:
+                      'Get a personalized roadmap to achieve your target career goals.',
                   buttonText: 'View Roadmap',
                   icon: Icons.alt_route_rounded,
                   iconBgColor: AppColors.resolveCobalt(isDark),
@@ -680,7 +793,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 12),
                 QuickActionCard(
                   title: 'Skill Gap & Courses',
-                  description: 'Analyze missing skills and find recommended courses.',
+                  description:
+                      'Analyze missing skills and find recommended courses.',
                   buttonText: 'Analyze Skills',
                   icon: Icons.smart_toy_rounded,
                   iconBgColor: AppColors.resolveForest(isDark),
@@ -690,7 +804,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(width: 12),
                 QuickActionCard(
                   title: 'Job Description Matcher',
-                  description: 'Paste a target job description to measure fit score.',
+                  description:
+                      'Paste a target job description to measure fit score.',
                   buttonText: 'Match JD',
                   icon: Icons.document_scanner_rounded,
                   iconBgColor: AppColors.resolveCobalt(isDark),
@@ -702,7 +817,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         MaterialPageRoute(
                           builder: (context) => ATSAnalysisScreen(
                             resumeId: _resumes[0]['id'].toString(),
-                            resumeTitle: _resumes[0]['title'] ?? "Resume Analysis",
+                            resumeTitle:
+                                _resumes[0]['title'] ?? "Resume Analysis",
                             initialTabIndex: 2,
                           ),
                         ),
@@ -720,7 +836,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildRecentResumesCard(Color cardBg, Color borderColor, Color textPrimary, bool isDark) {
+  Widget _buildRecentResumesCard(
+    Color cardBg,
+    Color borderColor,
+    Color textPrimary,
+    bool isDark,
+  ) {
     final recentList = _resumes.take(3).toList();
     final cobalt = AppColors.resolveCobalt(isDark);
     final ink = AppColors.resolveInk(isDark);
@@ -752,7 +873,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               TextButton(
                 onPressed: () => setState(() => _selectedIndex = 1),
-                child: Text('View All Resumes', style: AppTypography.buttonText(color: cobalt, fontSize: 11.5)),
+                child: Text(
+                  'View All Resumes',
+                  style: AppTypography.buttonText(
+                    color: cobalt,
+                    fontSize: 11.5,
+                  ),
+                ),
               ),
             ],
           ),
@@ -764,23 +891,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Center(
                 child: Text(
                   'No resumes uploaded yet. Upload a file to see your ATS score and improvements.',
-                  style: AppTypography.bodyRegular(color: inkSoft, fontSize: 12),
+                  style: AppTypography.bodyRegular(
+                    color: inkSoft,
+                    fontSize: 12,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
             )
           else
             ...recentList.map((item) {
-              final title = item['title'] ?? item['original_filename'] ?? "Resume";
+              final title =
+                  item['title'] ?? item['original_filename'] ?? "Resume";
               final idStr = item['id'].toString();
               final score = (item['ats_score'] as num?)?.toInt() ?? 80;
-              final scoreColor = score >= 70 ? forest : (score >= 50 ? ochre : AppColors.resolveBrick(isDark));
+              final scoreColor = score >= 70
+                  ? forest
+                  : (score >= 50 ? ochre : AppColors.resolveBrick(isDark));
 
               return InkWell(
                 onTap: () => _openATSAnalysis(idStr, title),
                 borderRadius: BorderRadius.circular(4),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
                     color: paper,
@@ -795,7 +931,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           color: cobalt.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(3),
                         ),
-                        child: Icon(Icons.description_outlined, color: cobalt, size: 16),
+                        child: Icon(
+                          Icons.description_outlined,
+                          color: cobalt,
+                          size: 16,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -804,29 +944,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: [
                             Text(
                               title,
-                              style: AppTypography.bodyMedium(color: ink, fontSize: 13),
+                              style: AppTypography.bodyMedium(
+                                color: ink,
+                                fontSize: 13,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               "ATS Score: $score / 100",
-                              style: AppTypography.monoLabel(color: scoreColor, fontSize: 11),
+                              style: AppTypography.monoLabel(
+                                color: scoreColor,
+                                fontSize: 11,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      Icon(Icons.chevron_right_rounded, color: inkSoft, size: 16),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: inkSoft,
+                        size: 16,
+                      ),
                     ],
                   ),
                 ),
               );
-            }).toList(),
+            }),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActionsGrid(Color cardBg, Color borderColor, Color textPrimary, bool isDark) {
+  Widget _buildQuickActionsGrid(
+    Color cardBg,
+    Color borderColor,
+    Color textPrimary,
+    bool isDark,
+  ) {
     final cobalt = AppColors.resolveCobalt(isDark);
     final forest = AppColors.resolveForest(isDark);
     final ochre = AppColors.resolveOchre(isDark);
@@ -855,40 +1010,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildActionTile(Icons.tune_rounded, 'Audit Resume', cobalt, () {
-                      if (_resumes.isNotEmpty) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ATSAnalysisScreen(
-                              resumeId: _resumes[0]['id'].toString(),
-                              resumeTitle: _resumes[0]['title'] ?? "Resume Analysis",
+                    child: _buildActionTile(
+                      Icons.tune_rounded,
+                      'Audit Resume',
+                      cobalt,
+                      () {
+                        if (_resumes.isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ATSAnalysisScreen(
+                                resumeId: _resumes[0]['id'].toString(),
+                                resumeTitle:
+                                    _resumes[0]['title'] ?? "Resume Analysis",
+                              ),
                             ),
-                          ),
-                        );
-                      } else {
-                        _uploadResume();
-                      }
-                    }),
+                          );
+                        } else {
+                          _uploadResume();
+                        }
+                      },
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildActionTile(Icons.document_scanner_rounded, 'Match JD', forest, () {
-                      if (_resumes.isNotEmpty) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ATSAnalysisScreen(
-                              resumeId: _resumes[0]['id'].toString(),
-                              resumeTitle: _resumes[0]['title'] ?? "Resume Analysis",
-                              initialTabIndex: 2,
+                    child: _buildActionTile(
+                      Icons.document_scanner_rounded,
+                      'Match JD',
+                      forest,
+                      () {
+                        if (_resumes.isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ATSAnalysisScreen(
+                                resumeId: _resumes[0]['id'].toString(),
+                                resumeTitle:
+                                    _resumes[0]['title'] ?? "Resume Analysis",
+                                initialTabIndex: 2,
+                              ),
                             ),
-                          ),
-                        );
-                      } else {
-                        _uploadResume();
-                      }
-                    }),
+                          );
+                        } else {
+                          _uploadResume();
+                        }
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -896,15 +1063,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildActionTile(Icons.alt_route_rounded, 'Transition Roadmap', cobalt, () {
-                      setState(() => _selectedIndex = 5);
-                    }),
+                    child: _buildActionTile(
+                      Icons.alt_route_rounded,
+                      'Transition Roadmap',
+                      cobalt,
+                      () {
+                        setState(() => _selectedIndex = 5);
+                      },
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildActionTile(Icons.smart_toy_rounded, 'Skill Gap Analysis', ochre, () {
-                      setState(() => _selectedIndex = 4);
-                    }),
+                    child: _buildActionTile(
+                      Icons.smart_toy_rounded,
+                      'Skill Gap Analysis',
+                      ochre,
+                      () {
+                        setState(() => _selectedIndex = 4);
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -915,7 +1092,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildActionTile(IconData icon, String label, Color color, VoidCallback onTap) {
+  Widget _buildActionTile(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final paper = AppColors.resolvePaper(isDark);
     final rule = AppColors.resolveRule(isDark);
@@ -945,8 +1127,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Expanded(
               child: Text(
                 label,
-                style: AppTypography.bodyRegular(color: ink, fontSize: 12.5)
-                    .copyWith(fontWeight: FontWeight.w600),
+                style: AppTypography.bodyRegular(
+                  color: ink,
+                  fontSize: 12.5,
+                ).copyWith(fontWeight: FontWeight.w600),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -969,7 +1153,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final aiTools = [
       {
         'title': 'AI Resume Optimizer',
-        'desc': 'Deep ATS critique and actionable suggestions to improve your resume score.',
+        'desc':
+            'Deep ATS critique and actionable suggestions to improve your resume score.',
         'icon': Icons.tune_rounded,
         'color': forest,
         'btn': 'Audit Resume',
@@ -988,11 +1173,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           } else {
             _uploadResume();
           }
-        }
+        },
       },
       {
         'title': 'AI Bullet Rewriter',
-        'desc': 'Transform weak bullet points into high-impact STAR-method achievement statements.',
+        'desc':
+            'Transform weak bullet points into high-impact STAR-method achievement statements.',
         'icon': Icons.edit_note_rounded,
         'color': cobalt,
         'btn': 'Rewrite Bullets',
@@ -1011,11 +1197,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           } else {
             _uploadResume();
           }
-        }
+        },
       },
       {
         'title': 'Job Description Matcher',
-        'desc': 'Paste a job description to calculate semantic fit, missing skills, and keywords.',
+        'desc':
+            'Paste a job description to calculate semantic fit, missing skills, and keywords.',
         'icon': Icons.document_scanner_rounded,
         'color': forest,
         'btn': 'Match Job Description',
@@ -1034,11 +1221,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           } else {
             _uploadResume();
           }
-        }
+        },
       },
       {
         'title': 'Skill Gap Intelligence',
-        'desc': 'Audit missing skills and generate market-aligned course blueprints.',
+        'desc':
+            'Audit missing skills and generate market-aligned course blueprints.',
         'icon': Icons.smart_toy_rounded,
         'color': ochre,
         'btn': 'Inspect Skill Gap',
@@ -1046,7 +1234,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
       {
         'title': 'AI Career Transition Roadmap',
-        'desc': 'Get a phase-by-phase transition plan with required tech stacks & certifications.',
+        'desc':
+            'Get a phase-by-phase transition plan with required tech stacks & certifications.',
         'icon': Icons.alt_route_rounded,
         'color': cobalt,
         'btn': 'View Roadmap',
@@ -1054,7 +1243,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
       {
         'title': 'AI Interview Prep Coach',
-        'desc': 'Practice role-specific technical, HR, and STAR behavioral interview questions.',
+        'desc':
+            'Practice role-specific technical, HR, and STAR behavioral interview questions.',
         'icon': Icons.record_voice_over_rounded,
         'color': ochre,
         'btn': 'Practice Simulator',
@@ -1079,12 +1269,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 24),
           LayoutBuilder(
             builder: (context, constraints) {
-              final crossCount = constraints.maxWidth >= 900 ? 3 : (constraints.maxWidth >= 600 ? 2 : 1);
+              final crossCount = constraints.maxWidth >= 900
+                  ? 3
+                  : (constraints.maxWidth >= 600 ? 2 : 1);
               return Wrap(
                 spacing: 16,
                 runSpacing: 16,
                 children: aiTools.map((tool) {
-                  final itemWidth = (constraints.maxWidth - ((crossCount - 1) * 16)) / crossCount;
+                  final itemWidth =
+                      (constraints.maxWidth - ((crossCount - 1) * 16)) /
+                      crossCount;
                   final color = tool['color'] as Color;
 
                   return Container(
@@ -1103,19 +1297,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+                            border: Border.all(
+                              color: color.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
                           ),
-                          child: Icon(tool['icon'] as IconData, color: color, size: 22),
+                          child: Icon(
+                            tool['icon'] as IconData,
+                            color: color,
+                            size: 22,
+                          ),
                         ),
                         const SizedBox(height: 14),
                         Text(
                           tool['title'] as String,
-                          style: AppTypography.displayHeading(color: ink, fontSize: 15.5),
+                          style: AppTypography.displayHeading(
+                            color: ink,
+                            fontSize: 15.5,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           tool['desc'] as String,
-                          style: AppTypography.bodyRegular(color: inkSoft, fontSize: 12),
+                          style: AppTypography.bodyRegular(
+                            color: inkSoft,
+                            fontSize: 12,
+                          ),
                         ),
                         const SizedBox(height: 18),
                         SizedBox(
@@ -1126,11 +1333,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               foregroundColor: color,
                               side: BorderSide(color: color, width: 1),
                               padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
                             ),
                             child: Text(
                               tool['btn'] as String,
-                              style: AppTypography.buttonText(color: color, fontSize: 12),
+                              style: AppTypography.buttonText(
+                                color: color,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ),
@@ -1152,9 +1364,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 0:
         return _buildDashboardMainContent(isDark);
       case 1:
-        return MyResumesScreen(
-          onResumesChanged: _loadDashboardData,
-        );
+        return MyResumesScreen(onResumesChanged: _loadDashboardData);
       case 2:
         return const SelectedJobsScreen();
       case 3:
@@ -1163,7 +1373,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return _isPremium
             ? const SkillGapScreen()
             : PremiumPlanPaywall(
-                featureTitle: "Unlock AI Career Copilot & Skill Gap Intelligence",
+                featureTitle:
+                    "Unlock AI Career Copilot & Skill Gap Intelligence",
                 featureDescription:
                     "Deep semantic skill comparison against real-time industry requirements, missing competency blueprints, and interview preparation.",
                 onSubscribed: () => setState(() => _isPremium = true),
@@ -1218,24 +1429,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: cobalt))
           : isDesktop
-              ? Row(
-                  children: [
-                    WebSidebar(
-                      selectedIndex: _selectedIndex,
-                      isPremium: _isPremium,
-                      onItemSelected: (index) {
-                        setState(() => _selectedIndex = index);
-                        if (index == 0) {
-                          _loadDashboardData();
-                        }
-                      },
-                      onUpgradePressed: () => setState(() => _selectedIndex = 5),
-                      onLogoutPressed: () => _confirmLogout(context),
-                    ),
-                    Expanded(child: _getScreenForTab(_selectedIndex)),
-                  ],
-                )
-              : _getScreenForTab(_selectedIndex),
+          ? Row(
+              children: [
+                WebSidebar(
+                  selectedIndex: _selectedIndex,
+                  isPremium: _isPremium,
+                  onItemSelected: (index) {
+                    setState(() => _selectedIndex = index);
+                    if (index == 0) {
+                      _loadDashboardData();
+                    }
+                  },
+                  onUpgradePressed: () => setState(() => _selectedIndex = 5),
+                  onLogoutPressed: () => _confirmLogout(context),
+                ),
+                Expanded(child: _getScreenForTab(_selectedIndex)),
+              ],
+            )
+          : _getScreenForTab(_selectedIndex),
       bottomNavigationBar: isDesktop
           ? null
           : BottomNavigationBar(
@@ -1246,11 +1457,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
               selectedItemColor: cobalt,
               unselectedItemColor: inkSoft,
               items: const [
-                BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-                BottomNavigationBarItem(icon: Icon(Icons.folder_open_rounded), label: 'Resumes'),
-                BottomNavigationBarItem(icon: Icon(Icons.document_scanner_rounded), label: 'Analysis'),
-                BottomNavigationBarItem(icon: Icon(Icons.alt_route_rounded), label: 'Roadmap'),
-                BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Settings'),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_rounded),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.folder_open_rounded),
+                  label: 'Resumes',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.document_scanner_rounded),
+                  label: 'Analysis',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.alt_route_rounded),
+                  label: 'Roadmap',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings_rounded),
+                  label: 'Settings',
+                ),
               ],
             ),
     );

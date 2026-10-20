@@ -39,12 +39,14 @@ class ATSAnalysisScreen extends StatefulWidget {
   State<ATSAnalysisScreen> createState() => _ATSAnalysisScreenState();
 }
 
-class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTickerProviderStateMixin {
+class _ATSAnalysisScreenState extends State<ATSAnalysisScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
   String? _errorMessage;
 
   Map<String, dynamic> _atsData = {};
+  // ignore: unused_field
   Map<String, dynamic>? _improvementData;
 
   final TextEditingController _jdController = TextEditingController();
@@ -72,6 +74,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
   bool _isTailorLoading = false;
   String? _jdTailoredMarkdown;
   String? _improvedOriginalMarkdown;
+  // ignore: unused_field
   String? _originalMarkdown;
   List<dynamic> _tailorChanges = [];
   List<dynamic> _tailorKeywordsAdded = [];
@@ -87,7 +90,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     super.initState();
     // 3 Clean Tabs: Overview, Score Breakdown & JD Matcher, Suggestions & Live Diff Editor
     final int initIdx = widget.initialTabIndex > 2 ? 2 : widget.initialTabIndex;
-    _tabController = TabController(length: 3, vsync: this, initialIndex: initIdx);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: initIdx,
+    );
 
     _diffSuggestions = [];
 
@@ -102,16 +109,24 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     try {
       final res = await sl<ApiClient>().get('jobs/selected/');
       if (res.statusCode == 200) {
-        final List list = (res.data is List) ? res.data : (res.data['data'] ?? []);
+        final List list = (res.data is List)
+            ? res.data
+            : (res.data['data'] ?? []);
         final Map<String, String> map = {};
         for (var item in list) {
-          final comp = (item['company_name'] ?? '').toString().toLowerCase().trim();
+          final comp = (item['company_name'] ?? '')
+              .toString()
+              .toLowerCase()
+              .trim();
           final ttl = (item['job_title'] ?? '').toString().toLowerCase().trim();
           if (comp.isNotEmpty && ttl.isNotEmpty) {
             map['${comp}_$ttl'] = (item['status'] ?? 'SAVED').toString();
           }
-          if (item['job'] != null && item['job'] is Map && item['job']['id'] != null) {
-            map[item['job']['id'].toString()] = (item['status'] ?? 'SAVED').toString();
+          if (item['job'] != null &&
+              item['job'] is Map &&
+              item['job']['id'] != null) {
+            map[item['job']['id'].toString()] = (item['status'] ?? 'SAVED')
+                .toString();
           }
           if (item['id'] != null) {
             map[item['id'].toString()] = (item['status'] ?? 'SAVED').toString();
@@ -127,10 +142,18 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
   }
 
   Future<void> _updateJobTrackerStatus(dynamic job, String newStatus) async {
-    final title = (job is Map ? (job['title'] ?? job['job_title']) : null) ?? 'Software Developer';
-    final company = (job is Map ? (job['company_name'] ?? job['company']) : null) ?? 'TechCorp Solutions';
+    final title =
+        (job is Map ? (job['title'] ?? job['job_title']) : null) ??
+        'Software Developer';
+    final company =
+        (job is Map ? (job['company_name'] ?? job['company']) : null) ??
+        'TechCorp Solutions';
     final location = (job is Map ? job['location'] : null) ?? _selectedLocation;
-    final applyLink = (job is Map ? (job['apply_link'] ?? job['url'] ?? job['apply_url']) : null) ?? '';
+    final applyLink =
+        (job is Map
+            ? (job['apply_link'] ?? job['url'] ?? job['apply_url'])
+            : null) ??
+        '';
     final jobId = (job is Map ? job['id'] : null)?.toString();
 
     final key = '${company.toLowerCase().trim()}_${title.toLowerCase().trim()}';
@@ -140,14 +163,17 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     });
 
     try {
-      final res = await sl<ApiClient>().post('jobs/selected/', data: {
-        if (jobId != null) 'job_id': jobId,
-        'company_name': company,
-        'job_title': title,
-        'location': location,
-        'apply_link': applyLink,
-        'status': newStatus,
-      });
+      final res = await sl<ApiClient>().post(
+        'jobs/selected/',
+        data: {
+          'job_id': ?jobId,
+          'company_name': company,
+          'job_title': title,
+          'location': location,
+          'apply_link': applyLink,
+          'status': newStatus,
+        },
+      );
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         if (mounted) {
@@ -155,7 +181,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text("✔ Moved to '$label' in Your Jobs!"),
-              backgroundColor: _statusColors[newStatus] ?? const Color(0xFF14B8A6),
+              backgroundColor:
+                  _statusColors[newStatus] ?? const Color(0xFF14B8A6),
               duration: const Duration(seconds: 2),
             ),
           );
@@ -164,7 +191,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error updating job tracker: $e"), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text("Error updating job tracker: $e"),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -198,7 +228,9 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
   };
 
   Color _scoreColor(int score, [bool? isDark]) {
-    final dark = isDark ?? (mounted ? Theme.of(context).brightness == Brightness.dark : true);
+    final dark =
+        isDark ??
+        (mounted ? Theme.of(context).brightness == Brightness.dark : true);
     if (score >= 70) return AppColors.resolveForest(dark);
     if (score >= 50) return AppColors.resolveOchre(dark);
     return AppColors.resolveBrick(dark);
@@ -216,7 +248,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
         ),
         title: Row(
           children: [
-            Icon(Icons.logout_rounded, color: AppColors.resolveBrick(isDark), size: 20),
+            Icon(
+              Icons.logout_rounded,
+              color: AppColors.resolveBrick(isDark),
+              size: 20,
+            ),
             const SizedBox(width: 8),
             Text(
               "Log Out",
@@ -231,14 +267,19 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
         ),
         content: Text(
           "Are you sure you want to log out of your account?",
-          style: AppTypography.bodyRegular(color: AppColors.resolveInk(isDark), fontSize: 13),
+          style: AppTypography.bodyRegular(
+            color: AppColors.resolveInk(isDark),
+            fontSize: 13,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogCtx).pop(),
             style: TextButton.styleFrom(
               foregroundColor: AppColors.resolveInkMuted(isDark),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
             child: const Text("Cancel"),
           ),
@@ -252,9 +293,14 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
               backgroundColor: AppColors.resolveBrick(isDark),
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-            child: const Text("Log Out", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              "Log Out",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -270,7 +316,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
   }
 
   Future<void> _fetchJobsForLocation([String? location]) async {
-    final targetLoc = location ?? (_locationController.text.trim().isNotEmpty ? _locationController.text.trim() : null);
+    final targetLoc =
+        location ??
+        (_locationController.text.trim().isNotEmpty
+            ? _locationController.text.trim()
+            : null);
     setState(() {
       _isJobsLoading = true;
       if (targetLoc != null && targetLoc.isNotEmpty) {
@@ -283,13 +333,23 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
       final locQuery = (targetLoc != null && targetLoc.trim().isNotEmpty)
           ? '?location=${Uri.encodeComponent(targetLoc.trim())}'
           : '';
-      final response = await sl<ApiClient>().get('jobs/resume-matches/${widget.resumeId}/$locQuery');
+      final response = await sl<ApiClient>().get(
+        'jobs/resume-matches/${widget.resumeId}/$locQuery',
+      );
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
-        final list = (data is Map && data['data'] is List) ? data['data'] : (data is List ? data : []);
-        final detectedLoc = (data is Map && data['detected_location'] != null) ? data['detected_location'].toString() : null;
-        final searchedLoc = (data is Map && data['searched_location'] != null) ? data['searched_location'].toString() : null;
-        final detectedRole = (data is Map && data['detected_role'] != null) ? data['detected_role'].toString() : "Software Developer";
+        final list = (data is Map && data['data'] is List)
+            ? data['data']
+            : (data is List ? data : []);
+        final detectedLoc = (data is Map && data['detected_location'] != null)
+            ? data['detected_location'].toString()
+            : null;
+        final searchedLoc = (data is Map && data['searched_location'] != null)
+            ? data['searched_location'].toString()
+            : null;
+        final detectedRole = (data is Map && data['detected_role'] != null)
+            ? data['detected_role'].toString()
+            : "Software Developer";
 
         final finalLoc = searchedLoc ?? detectedLoc ?? targetLoc ?? "Remote";
         if (mounted) {
@@ -363,7 +423,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
 
   Future<void> _loadImprovementsAndDiffs(ResumeRepository resumeRepo) async {
     try {
-      final impRes = await resumeRepo.getResumeImprovement(widget.resumeId, refresh: false);
+      final impRes = await resumeRepo.getResumeImprovement(
+        widget.resumeId,
+        refresh: false,
+      );
       if (impRes.isSuccess && impRes.data != null) {
         final imp = impRes.data!;
         final improvementData = {
@@ -377,7 +440,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
         final List<Map<String, dynamic>> realSuggestions = [];
         if (improvementData['better_bullet_points'] is Map) {
           int idx = 0;
-          (improvementData['better_bullet_points'] as Map).forEach((oldText, newText) {
+          (improvementData['better_bullet_points'] as Map).forEach((
+            oldText,
+            newText,
+          ) {
             idx++;
             realSuggestions.add({
               "id": idx.toString(),
@@ -390,7 +456,9 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
         }
 
         if (improvementData['summary_suggestions'] != null) {
-          final summaryText = improvementData['summary_suggestions'].toString().trim();
+          final summaryText = improvementData['summary_suggestions']
+              .toString()
+              .trim();
           if (summaryText.isNotEmpty && summaryText.length > 20) {
             realSuggestions.add({
               "id": "${realSuggestions.length + 1}",
@@ -416,12 +484,24 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
 
   Future<void> _loadCachedMarkdown(ResumeRepository resumeRepo) async {
     try {
-      final contentRes = await resumeRepo.getResumeContent(widget.resumeId, type: 'diff_improved', refresh: false);
-      if (contentRes.isSuccess && contentRes.data != null && contentRes.data!.trim().length > 50) {
-        if (mounted) setState(() => _improvedOriginalMarkdown = contentRes.data!);
+      final contentRes = await resumeRepo.getResumeContent(
+        widget.resumeId,
+        type: 'diff_improved',
+        refresh: false,
+      );
+      if (contentRes.isSuccess &&
+          contentRes.data != null &&
+          contentRes.data!.trim().length > 50) {
+        if (mounted)
+          setState(() => _improvedOriginalMarkdown = contentRes.data!);
       }
-      final jdContentRes = await resumeRepo.getResumeContent(widget.resumeId, type: 'jd_tailored');
-      if (jdContentRes.isSuccess && jdContentRes.data != null && jdContentRes.data!.trim().length > 50) {
+      final jdContentRes = await resumeRepo.getResumeContent(
+        widget.resumeId,
+        type: 'jd_tailored',
+      );
+      if (jdContentRes.isSuccess &&
+          jdContentRes.data != null &&
+          jdContentRes.data!.trim().length > 50) {
         if (mounted) setState(() => _jdTailoredMarkdown = jdContentRes.data!);
       }
     } catch (e) {
@@ -435,7 +515,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     final jdText = _jdController.text.trim();
     if (jdText.length < 15) {
       setState(() {
-        _jdErrorMessage = "Please paste a realistic job description (at least 15 characters).";
+        _jdErrorMessage =
+            "Please paste a realistic job description (at least 15 characters).";
       });
       return;
     }
@@ -446,7 +527,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     });
 
     try {
-      final res = await sl<ResumeRepository>().calculateJDMatch(widget.resumeId, jdText);
+      final res = await sl<ResumeRepository>().calculateJDMatch(
+        widget.resumeId,
+        jdText,
+      );
       if (res.isSuccess && res.data != null) {
         final m = res.data!;
         setState(() {
@@ -459,7 +543,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
         });
       } else {
         setState(() {
-          _jdErrorMessage = res.failure?.message ?? "Failed to compute match score.";
+          _jdErrorMessage =
+              res.failure?.message ?? "Failed to compute match score.";
         });
       }
     } catch (e) {
@@ -479,7 +564,9 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     final jdText = _jdController.text.trim();
     if (jdText.length < 15) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter a valid Job Description first.")),
+        const SnackBar(
+          content: Text("Please enter a valid Job Description first."),
+        ),
       );
       return;
     }
@@ -489,10 +576,14 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     });
 
     try {
-      final res = await sl<ResumeRepository>().autoTailorResume(widget.resumeId, jdText);
+      final res = await sl<ResumeRepository>().autoTailorResume(
+        widget.resumeId,
+        jdText,
+      );
       if (res.isSuccess && res.data != null) {
         setState(() {
-          _jdTailoredMarkdown = res.data!['markdown'] ?? res.data!['tailored_markdown'] ?? '';
+          _jdTailoredMarkdown =
+              res.data!['markdown'] ?? res.data!['tailored_markdown'] ?? '';
           _originalMarkdown = res.data!['original_markdown'];
           _tailorChanges = res.data!['changes'] ?? [];
           _tailorKeywordsAdded = res.data!['keywords_added'] ?? [];
@@ -509,7 +600,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     }
   }
 
-  Future<void> _downloadResumeWithTemplate(String templateKey, {required String downloadType}) async {
+  Future<void> _downloadResumeWithTemplate(
+    String templateKey, {
+    required String downloadType,
+  }) async {
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
     }
@@ -521,7 +615,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
       final resumeRepo = sl<ResumeRepository>();
       // Sync the content to the backend before downloading
       if (downloadType == 'jd_tailored') {
-        if (_jdTailoredMarkdown != null && _jdTailoredMarkdown!.trim().length > 50) {
+        if (_jdTailoredMarkdown != null &&
+            _jdTailoredMarkdown!.trim().length > 50) {
           await resumeRepo.saveResumeContent(
             widget.resumeId,
             _jdTailoredMarkdown!,
@@ -529,7 +624,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
           );
         }
       } else {
-        if (_improvedOriginalMarkdown != null && _improvedOriginalMarkdown!.trim().length > 50) {
+        if (_improvedOriginalMarkdown != null &&
+            _improvedOriginalMarkdown!.trim().length > 50) {
           await resumeRepo.saveResumeContent(
             widget.resumeId,
             _improvedOriginalMarkdown!,
@@ -539,7 +635,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
       }
 
       final token = await sl<SecureStorageService>().getAccessToken();
-      final String downloadUrl = "${ApiClient.baseUrl}analysis/improve/${widget.resumeId}/download/?template=$templateKey&type=$downloadType${token != null ? '&token=$token' : ''}";
+      final String downloadUrl =
+          "${ApiClient.baseUrl}analysis/improve/${widget.resumeId}/download/?template=$templateKey&type=$downloadType${token != null ? '&token=$token' : ''}";
 
       final Uri uri = Uri.parse(downloadUrl);
       if (await canLaunchUrl(uri)) {
@@ -550,9 +647,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(downloadType == 'jd_tailored'
-              ? "✔ Downloading your JD-Tailored Resume (${templateKey[0].toUpperCase()}${templateKey.substring(1)} template)!"
-              : "✔ Downloading your Improved Resume (${templateKey[0].toUpperCase()}${templateKey.substring(1)} template)!"),
+          content: Text(
+            downloadType == 'jd_tailored'
+                ? "✔ Downloading your JD-Tailored Resume (${templateKey[0].toUpperCase()}${templateKey.substring(1)} template)!"
+                : "✔ Downloading your Improved Resume (${templateKey[0].toUpperCase()}${templateKey.substring(1)} template)!",
+          ),
           backgroundColor: const Color(0xFF22C55E),
         ),
       );
@@ -589,30 +688,37 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             {
               "key": "classic",
               "name": "Classic Executive",
-              "desc": "Traditional navy layout, centred name & contact header, bold section rules. Best for corporate & enterprise roles.",
+              "desc":
+                  "Traditional navy layout, centred name & contact header, bold section rules. Best for corporate & enterprise roles.",
               "icon": Icons.article_outlined,
               "color": const Color(0xFF1E3A8A),
             },
             {
               "key": "modern",
               "name": "Modern Professional",
-              "desc": "Left-aligned name, cobalt accent dividers, clean spacing. Ideal for tech, product, and startup roles.",
+              "desc":
+                  "Left-aligned name, cobalt accent dividers, clean spacing. Ideal for tech, product, and startup roles.",
               "icon": Icons.dashboard_outlined,
               "color": cobalt,
             },
             {
               "key": "minimalist",
               "name": "Minimalist Clean",
-              "desc": "Ultra-clean charcoal typography with subtle grey rules. Maximum whitespace & readability for strict ATS scanners.",
+              "desc":
+                  "Ultra-clean charcoal typography with subtle grey rules. Maximum whitespace & readability for strict ATS scanners.",
               "icon": Icons.subject_outlined,
-              "color": isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+              "color": isDark
+                  ? const Color(0xFF94A3B8)
+                  : const Color(0xFF475569),
             },
           ];
 
           return Container(
             decoration: BoxDecoration(
               color: cardBg,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(8),
+              ),
               border: Border.all(color: rule, width: 1),
             ),
             padding: EdgeInsets.only(
@@ -646,7 +752,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(color: rule),
                         ),
-                        child: Icon(Icons.picture_as_pdf_rounded, color: cobalt, size: 24),
+                        child: Icon(
+                          Icons.picture_as_pdf_rounded,
+                          color: cobalt,
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -654,14 +764,22 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              downloadType == 'jd_tailored' ? "Download JD-Tailored Resume" : "Download Improved Resume",
-                              style: AppTypography.displayHeading(color: textPrimary, fontSize: 18),
+                              downloadType == 'jd_tailored'
+                                  ? "Download JD-Tailored Resume"
+                                  : "Download Improved Resume",
+                              style: AppTypography.displayHeading(
+                                color: textPrimary,
+                                fontSize: 18,
+                              ),
                             ),
                             Text(
                               downloadType == 'jd_tailored'
                                   ? "Select a template for your JD-optimized resume"
                                   : "Select a template with your accepted improvements",
-                              style: AppTypography.bodyRegular(color: textSecondary, fontSize: 13),
+                              style: AppTypography.bodyRegular(
+                                color: textSecondary,
+                                fontSize: 13,
+                              ),
                             ),
                           ],
                         ),
@@ -683,7 +801,9 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: isSelected ? tplColor.withValues(alpha: 0.08) : paperAlt,
+                          color: isSelected
+                              ? tplColor.withValues(alpha: 0.08)
+                              : paperAlt,
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
                             color: isSelected ? tplColor : rule,
@@ -698,7 +818,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                 color: tplColor.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: Icon(tpl["icon"] as IconData, color: tplColor, size: 22),
+                              child: Icon(
+                                tpl["icon"] as IconData,
+                                color: tplColor,
+                                size: 22,
+                              ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -710,13 +834,18 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
-                                      color: isSelected ? tplColor : textPrimary,
+                                      color: isSelected
+                                          ? tplColor
+                                          : textPrimary,
                                     ),
                                   ),
                                   const SizedBox(height: 3),
                                   Text(
                                     tpl["desc"] as String,
-                                    style: TextStyle(fontSize: 11, color: textSecondary),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: textSecondary,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -741,7 +870,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        _downloadResumeWithTemplate(selectedTemplate, downloadType: downloadType);
+                        _downloadResumeWithTemplate(
+                          selectedTemplate,
+                          downloadType: downloadType,
+                        );
                       },
                       icon: const Icon(Icons.download_rounded, size: 18),
                       label: Text(
@@ -750,9 +882,13 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: cobalt,
-                        foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                        foregroundColor: isDark
+                            ? AppColors.darkPaper
+                            : Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                       ),
                     ),
                   ),
@@ -768,7 +904,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
   Future<void> _exportReport(String format) async {
     try {
       final token = await sl<SecureStorageService>().getAccessToken();
-      final String downloadUrl = "${ApiClient.baseUrl}analysis/export-ats-pdf/${widget.resumeId}/?format=$format${token != null ? '&token=$token' : ''}";
+      final String downloadUrl =
+          "${ApiClient.baseUrl}analysis/export-ats-pdf/${widget.resumeId}/?format=$format${token != null ? '&token=$token' : ''}";
 
       final Uri uri = Uri.parse(downloadUrl);
       if (await canLaunchUrl(uri)) {
@@ -784,21 +921,28 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Export failed: ${e.toString()}")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Export failed: ${e.toString()}")));
     }
   }
 
   void _applySuggestion(int index) {
-    final oldText = (_diffSuggestions[index]["oldText"] ?? "").toString().trim();
-    final newText = (_diffSuggestions[index]["newText"] ?? "").toString().trim();
-    final section = (_diffSuggestions[index]["section"] ?? "").toString().toLowerCase();
+    final oldText = (_diffSuggestions[index]["oldText"] ?? "")
+        .toString()
+        .trim();
+    final newText = (_diffSuggestions[index]["newText"] ?? "")
+        .toString()
+        .trim();
+    final section = (_diffSuggestions[index]["section"] ?? "")
+        .toString()
+        .toLowerCase();
 
     setState(() {
       _diffSuggestions[index]["status"] = "applied";
 
-      if (_improvedOriginalMarkdown != null && _improvedOriginalMarkdown!.isNotEmpty) {
+      if (_improvedOriginalMarkdown != null &&
+          _improvedOriginalMarkdown!.isNotEmpty) {
         String current = _improvedOriginalMarkdown!;
         bool replaced = false;
 
@@ -814,9 +958,15 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
           double bestRatio = 0.0;
           int bestLineIdx = -1;
 
-          String norm(String s) => s.replaceAll(RegExp(r'^[*\-•\s]+|\*+|_+|#+|:+'), '').trim().toLowerCase();
+          String norm(String s) => s
+              .replaceAll(RegExp(r'^[*\-•\s]+|\*+|_+|#+|:+'), '')
+              .trim()
+              .toLowerCase();
           final normOld = norm(oldText);
-          final oldWords = normOld.split(RegExp(r'\s+')).where((w) => w.length > 3).toSet();
+          final oldWords = normOld
+              .split(RegExp(r'\s+'))
+              .where((w) => w.length > 3)
+              .toSet();
 
           for (int i = 0; i < lines.length; i++) {
             final lineNorm = norm(lines[i]);
@@ -829,7 +979,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             }
 
             if (oldWords.isNotEmpty) {
-              final lineWords = lineNorm.split(RegExp(r'\s+')).where((w) => w.length > 3).toSet();
+              final lineWords = lineNorm
+                  .split(RegExp(r'\s+'))
+                  .where((w) => w.length > 3)
+                  .toSet();
               final common = oldWords.intersection(lineWords).length;
               final ratio = common / oldWords.length;
               if (ratio > 0.40 && ratio > bestRatio) {
@@ -840,7 +993,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
           }
 
           if (bestLineIdx != -1) {
-            final prefix = lines[bestLineIdx].trim().startsWith('*') || lines[bestLineIdx].trim().startsWith('-') ? '* ' : '';
+            final prefix =
+                lines[bestLineIdx].trim().startsWith('*') ||
+                    lines[bestLineIdx].trim().startsWith('-')
+                ? '* '
+                : '';
             lines[bestLineIdx] = '$prefix$newText';
             current = lines.join('\n');
             replaced = true;
@@ -848,10 +1005,17 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
         }
 
         // Strategy 3: Professional summary section replacement
-        if (!replaced && (section.contains('summary') || oldText.contains('summary'))) {
-          final sumRegex = RegExp(r'(## PROFESSIONAL SUMMARY\s*\n+)([\s\S]*?)(\n+## )', caseSensitive: false);
+        if (!replaced &&
+            (section.contains('summary') || oldText.contains('summary'))) {
+          final sumRegex = RegExp(
+            r'(## PROFESSIONAL SUMMARY\s*\n+)([\s\S]*?)(\n+## )',
+            caseSensitive: false,
+          );
           if (sumRegex.hasMatch(current)) {
-            current = current.replaceFirstMapped(sumRegex, (m) => '${m[1]}$newText${m[3]}');
+            current = current.replaceFirstMapped(
+              sumRegex,
+              (m) => '${m[1]}$newText${m[3]}',
+            );
             replaced = true;
           }
         }
@@ -859,7 +1023,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
         // Strategy 4: Fallback - insert under professional experience
         if (!replaced && newText.isNotEmpty) {
           if (current.contains('## PROFESSIONAL EXPERIENCE')) {
-            current = current.replaceFirst('## PROFESSIONAL EXPERIENCE', '## PROFESSIONAL EXPERIENCE\n\n* $newText');
+            current = current.replaceFirst(
+              '## PROFESSIONAL EXPERIENCE',
+              '## PROFESSIONAL EXPERIENCE\n\n* $newText',
+            );
           } else {
             current = '$current\n* $newText';
           }
@@ -911,20 +1078,30 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Opening link: $url")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Opening link: $url")));
       }
     }
   }
 
   Future<void> _applyToJob(dynamic job) async {
-    final String? applyLink = (job is Map) ? (job['apply_link'] ?? job['url'] ?? job['apply_url']) : null;
-    final String title = (job is Map ? (job['title'] ?? job['job_title'] ?? '') : '').toString();
-    final String company = (job is Map ? (job['company_name'] ?? job['company'] ?? '') : '').toString().trim();
-    final String location = (job is Map ? (job['location'] ?? '') : '').toString();
-    final fallbackUrl = 'https://www.google.com/search?q=${Uri.encodeComponent('$company $title careers $location')}';
-    final urlToOpen = (applyLink != null && applyLink.startsWith('http')) ? applyLink : fallbackUrl;
+    final String? applyLink = (job is Map)
+        ? (job['apply_link'] ?? job['url'] ?? job['apply_url'])
+        : null;
+    final String title =
+        (job is Map ? (job['title'] ?? job['job_title'] ?? '') : '').toString();
+    final String company =
+        (job is Map ? (job['company_name'] ?? job['company'] ?? '') : '')
+            .toString()
+            .trim();
+    final String location = (job is Map ? (job['location'] ?? '') : '')
+        .toString();
+    final fallbackUrl =
+        'https://www.google.com/search?q=${Uri.encodeComponent('$company $title careers $location')}';
+    final urlToOpen = (applyLink != null && applyLink.startsWith('http'))
+        ? applyLink
+        : fallbackUrl;
     _openUrl(urlToOpen);
   }
 
@@ -938,21 +1115,29 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     final cobalt = AppColors.resolveCobalt(isDark);
 
     final atsScore = (_atsData['ats_score'] as num?)?.toInt() ?? 85;
-    final formattingScore = (_atsData['formatting_score'] as num?)?.toInt() ?? 90;
+    final formattingScore =
+        (_atsData['formatting_score'] as num?)?.toInt() ?? 90;
     final skillsScore = (_atsData['skills_score'] as num?)?.toInt() ?? 90;
-    final experienceScore = (_atsData['experience_score'] as num?)?.toInt() ?? 80;
+    final experienceScore =
+        (_atsData['experience_score'] as num?)?.toInt() ?? 80;
     final educationScore = (_atsData['education_score'] as num?)?.toInt() ?? 80;
     final keywordScore = (_atsData['keyword_score'] as num?)?.toInt() ?? 70;
-    final completenessScore = (_atsData['completeness_score'] as num?)?.toInt() ?? 100;
+    final completenessScore =
+        (_atsData['completeness_score'] as num?)?.toInt() ?? 100;
 
-    final suggestionsList = (_atsData['suggestions'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [
-      "Add quantifiable achievement metrics to your work experience section.",
-      "Include key technical terms (Python, REST APIs, PostgreSQL) in your summary.",
-      "Format dates and section headers consistently throughout your document.",
-    ];
+    final suggestionsList =
+        (_atsData['suggestions'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [
+          "Add quantifiable achievement metrics to your work experience section.",
+          "Include key technical terms (Python, REST APIs, PostgreSQL) in your summary.",
+          "Format dates and section headers consistently throughout your document.",
+        ];
 
     final bool isDesktop = MediaQuery.of(context).size.width >= 900;
-    final int analysisCount = (_atsData['analysis_count'] as num?)?.toInt() ?? 1;
+    final int analysisCount =
+        (_atsData['analysis_count'] as num?)?.toInt() ?? 1;
 
     final analysisScaffold = Scaffold(
       appBar: AppBar(
@@ -960,10 +1145,7 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
           mainAxisSize: MainAxisSize.min,
           children: [
             Flexible(
-              child: Text(
-                widget.resumeTitle,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(widget.resumeTitle, overflow: TextOverflow.ellipsis),
             ),
             const SizedBox(width: 10),
             Container(
@@ -971,7 +1153,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
               decoration: BoxDecoration(
                 color: cobalt.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(3),
-                border: Border.all(color: cobalt.withValues(alpha: 0.35), width: 0.8),
+                border: Border.all(
+                  color: cobalt.withValues(alpha: 0.35),
+                  width: 0.8,
+                ),
               ),
               child: Text(
                 "AUDIT #$analysisCount",
@@ -1000,8 +1185,14 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             tooltip: "Export Report",
             onSelected: _exportReport,
             itemBuilder: (context) => [
-              const PopupMenuItem(value: "pdf", child: Text("Export as PDF Report")),
-              const PopupMenuItem(value: "docx", child: Text("Export as Word Doc")),
+              const PopupMenuItem(
+                value: "pdf",
+                child: Text("Export as PDF Report"),
+              ),
+              const PopupMenuItem(
+                value: "docx",
+                child: Text("Export as Word Doc"),
+              ),
             ],
           ),
         ],
@@ -1017,737 +1208,1213 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: cobalt))
           : _errorMessage != null
-              ? Center(
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.resolveOchre(isDark),
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _errorMessage!,
+                    style: AppTypography.bodyRegular(color: textPrimary),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadAnalysisData,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: cobalt,
+                      foregroundColor: isDark
+                          ? AppColors.darkPaper
+                          : Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    child: const Text("Retry"),
+                  ),
+                ],
+              ),
+            )
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                // TAB 1: OVERVIEW
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.warning_amber_rounded, color: AppColors.resolveOchre(isDark), size: 48),
-                      const SizedBox(height: 16),
-                      Text(_errorMessage!, style: AppTypography.bodyRegular(color: textPrimary)),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadAnalysisData,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: cobalt,
-                          foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isWide = constraints.maxWidth >= 750;
+                          return isWide
+                              ? Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: _buildAtsGaugeCard(
+                                        atsScore,
+                                        cardBg,
+                                        borderColor,
+                                        textPrimary,
+                                        isDark,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 20),
+                                    Expanded(
+                                      flex: 3,
+                                      child: _buildQuickScoreBreakdownCard(
+                                        completenessScore,
+                                        skillsScore,
+                                        experienceScore,
+                                        educationScore,
+                                        formattingScore,
+                                        keywordScore,
+                                        cardBg,
+                                        borderColor,
+                                        textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Column(
+                                  children: [
+                                    _buildAtsGaugeCard(
+                                      atsScore,
+                                      cardBg,
+                                      borderColor,
+                                      textPrimary,
+                                      isDark,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildQuickScoreBreakdownCard(
+                                      completenessScore,
+                                      skillsScore,
+                                      experienceScore,
+                                      educationScore,
+                                      formattingScore,
+                                      keywordScore,
+                                      cardBg,
+                                      borderColor,
+                                      textPrimary,
+                                    ),
+                                  ],
+                                );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      // AI SUGGESTIONS CHECKLIST CARD
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: borderColor),
                         ),
-                        child: const Text("Retry"),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "AI Suggestions Summary",
+                              style: AppTypography.displayHeading(
+                                fontSize: 16,
+                                color: textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ...suggestionsList.map(
+                              (sug) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.arrow_right_rounded,
+                                      color: cobalt,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        sug,
+                                        style: AppTypography.bodyRegular(
+                                          fontSize: 13,
+                                          color: textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton(
+                              onPressed: () => _tabController.animateTo(2),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: cobalt,
+                                side: BorderSide(color: cobalt),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              child: const Text("Open Live Diff Editor"),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // REAL-TIME MATCHING JOBS SECTION
+                      _buildRealTimeJobsSection(
+                        cardBg,
+                        borderColor,
+                        textPrimary,
+                        textSecondary,
+                        isDark,
                       ),
                     ],
                   ),
-                )
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // TAB 1: OVERVIEW
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+
+                // TAB 2: SCORE BREAKDOWN & JD MATCHER
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Detailed ATS Score Categories",
+                              style: AppTypography.displayHeading(
+                                fontSize: 16,
+                                color: textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ProgressBarRow(
+                              label: "Contact Info & Completeness",
+                              percentage: completenessScore,
+                              barColor: _scoreColor(completenessScore, isDark),
+                            ),
+                            ProgressBarRow(
+                              label: "Technical Skills Alignment",
+                              percentage: skillsScore,
+                              barColor: _scoreColor(skillsScore, isDark),
+                            ),
+                            ProgressBarRow(
+                              label: "Experience Impact & Depth",
+                              percentage: experienceScore,
+                              barColor: _scoreColor(experienceScore, isDark),
+                            ),
+                            ProgressBarRow(
+                              label: "Education & Certifications",
+                              percentage: educationScore,
+                              barColor: _scoreColor(educationScore, isDark),
+                            ),
+                            ProgressBarRow(
+                              label: "Document Formatting",
+                              percentage: formattingScore,
+                              barColor: _scoreColor(formattingScore, isDark),
+                            ),
+                            ProgressBarRow(
+                              label: "Keyword Density",
+                              percentage: keywordScore,
+                              barColor: _scoreColor(keywordScore, isDark),
+                            ),
+                            ProgressBarRow(
+                              label: "Readability Index",
+                              percentage: 85,
+                              barColor: _scoreColor(85, isDark),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        "Job Description Semantic Matcher",
+                        style: AppTypography.displayHeading(
+                          fontSize: 16,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _jdController,
+                        maxLines: 4,
+                        style: AppTypography.bodyRegular(color: textPrimary),
+                        decoration: InputDecoration(
+                          hintText:
+                              "Paste target job description text here to measure fit score...",
+                          hintStyle: AppTypography.bodyRegular(
+                            color: textSecondary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(4),
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(4),
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(4),
+                            borderSide: BorderSide(color: cobalt, width: 1.5),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
                         children: [
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final isWide = constraints.maxWidth >= 750;
-                              return isWide
-                                  ? Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(flex: 2, child: _buildAtsGaugeCard(atsScore, cardBg, borderColor, textPrimary, isDark)),
-                                        const SizedBox(width: 20),
-                                        Expanded(flex: 3, child: _buildQuickScoreBreakdownCard(completenessScore, skillsScore, experienceScore, educationScore, formattingScore, keywordScore, cardBg, borderColor, textPrimary)),
-                                      ],
-                                    )
-                                  : Column(
-                                      children: [
-                                        _buildAtsGaugeCard(atsScore, cardBg, borderColor, textPrimary, isDark),
-                                        const SizedBox(height: 16),
-                                        _buildQuickScoreBreakdownCard(completenessScore, skillsScore, experienceScore, educationScore, formattingScore, keywordScore, cardBg, borderColor, textPrimary),
-                                      ],
-                                    );
-                            },
-                          ),
-                          const SizedBox(height: 24),
-
-                          // AI SUGGESTIONS CHECKLIST CARD
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: cardBg,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: borderColor),
+                          ElevatedButton.icon(
+                            onPressed: _isJdLoading ? null : _calculateJdMatch,
+                            icon: _isJdLoading
+                                ? SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      color: isDark
+                                          ? AppColors.darkPaper
+                                          : Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.analytics_rounded, size: 18),
+                            label: Text(
+                              _isJdLoading
+                                  ? "Analyzing Match..."
+                                  : "Run JD Match Analysis",
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "AI Suggestions Summary",
-                                  style: AppTypography.displayHeading(fontSize: 16, color: textPrimary),
-                                ),
-                                const SizedBox(height: 16),
-                                ...suggestionsList.map((sug) => Padding(
-                                      padding: const EdgeInsets.only(bottom: 12.0),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.arrow_right_rounded, color: cobalt, size: 22),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              sug,
-                                              style: AppTypography.bodyRegular(
-                                                fontSize: 13,
-                                                color: textPrimary,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )),
-                                const SizedBox(height: 8),
-                                OutlinedButton(
-                                  onPressed: () => _tabController.animateTo(2),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: cobalt,
-                                    side: BorderSide(color: cobalt),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: cobalt,
+                              foregroundColor: isDark
+                                  ? AppColors.darkPaper
+                                  : Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          OutlinedButton.icon(
+                            onPressed: _isTailorLoading
+                                ? null
+                                : _generateTailoredResume,
+                            icon: _isTailorLoading
+                                ? SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      color: AppColors.resolveForest(isDark),
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.auto_awesome_rounded,
+                                    size: 18,
                                   ),
-                                  child: const Text("Open Live Diff Editor"),
-                                ),
-                              ],
+                            label: Text(
+                              _isTailorLoading
+                                  ? "Tailoring..."
+                                  : "Auto-Tailor Resume",
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.resolveForest(isDark),
+                              side: BorderSide(
+                                color: AppColors.resolveForest(isDark),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 24),
-
-                          // REAL-TIME MATCHING JOBS SECTION
-                          _buildRealTimeJobsSection(cardBg, borderColor, textPrimary, textSecondary, isDark),
                         ],
                       ),
-                    ),
-
-                    // TAB 2: SCORE BREAKDOWN & JD MATCHER
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color: cardBg,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: borderColor),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Detailed ATS Score Categories",
-                                  style: AppTypography.displayHeading(fontSize: 16, color: textPrimary),
-                                ),
-                                const SizedBox(height: 16),
-                                ProgressBarRow(label: "Contact Info & Completeness", percentage: completenessScore, barColor: _scoreColor(completenessScore, isDark)),
-                                ProgressBarRow(label: "Technical Skills Alignment", percentage: skillsScore, barColor: _scoreColor(skillsScore, isDark)),
-                                ProgressBarRow(label: "Experience Impact & Depth", percentage: experienceScore, barColor: _scoreColor(experienceScore, isDark)),
-                                ProgressBarRow(label: "Education & Certifications", percentage: educationScore, barColor: _scoreColor(educationScore, isDark)),
-                                ProgressBarRow(label: "Document Formatting", percentage: formattingScore, barColor: _scoreColor(formattingScore, isDark)),
-                                ProgressBarRow(label: "Keyword Density", percentage: keywordScore, barColor: _scoreColor(keywordScore, isDark)),
-                                ProgressBarRow(label: "Readability Index", percentage: 85, barColor: _scoreColor(85, isDark)),
-                              ],
-                            ),
+                      if (_isJdLoading) ...[
+                        const SizedBox(height: 24),
+                        Container(
+                          padding: const EdgeInsets.all(28),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: borderColor),
                           ),
-                          const SizedBox(height: 24),
-                          Text("Job Description Semantic Matcher", style: AppTypography.displayHeading(fontSize: 16, color: textPrimary)),
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: _jdController,
-                            maxLines: 4,
-                            style: AppTypography.bodyRegular(color: textPrimary),
-                            decoration: InputDecoration(
-                              hintText: "Paste target job description text here to measure fit score...",
-                              hintStyle: AppTypography.bodyRegular(color: textSecondary),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: borderColor)),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: borderColor)),
-                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: cobalt, width: 1.5)),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
+                          child: Column(
                             children: [
-                              ElevatedButton.icon(
-                                onPressed: _isJdLoading ? null : _calculateJdMatch,
-                                icon: _isJdLoading 
-                                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: isDark ? AppColors.darkPaper : Colors.white, strokeWidth: 2))
-                                    : const Icon(Icons.analytics_rounded, size: 18),
-                                label: Text(_isJdLoading ? "Analyzing Match..." : "Run JD Match Analysis"),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: cobalt,
-                                  foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              OutlinedButton.icon(
-                                onPressed: _isTailorLoading ? null : _generateTailoredResume,
-                                icon: _isTailorLoading
-                                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: AppColors.resolveForest(isDark), strokeWidth: 2))
-                                    : const Icon(Icons.auto_awesome_rounded, size: 18),
-                                label: Text(_isTailorLoading ? "Tailoring..." : "Auto-Tailor Resume"),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.resolveForest(isDark),
-                                  side: BorderSide(color: AppColors.resolveForest(isDark)),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              CircularProgressIndicator(color: cobalt),
+                              const SizedBox(height: 16),
+                              Text(
+                                "Deep comparing resume against job requirements...",
+                                style: AppTypography.bodyRegular(
+                                  color: textPrimary,
+                                  fontSize: 14,
                                 ),
                               ),
                             ],
                           ),
-                          if (_isJdLoading) ...[
-                            const SizedBox(height: 24),
-                            Container(
-                              padding: const EdgeInsets.all(28),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: borderColor),
-                              ),
-                              child: Column(
-                                children: [
-                                  CircularProgressIndicator(color: cobalt),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    "Deep comparing resume against job requirements...",
-                                    style: AppTypography.bodyRegular(color: textPrimary, fontSize: 14),
-                                  ),
-                                ],
-                              ),
+                        ),
+                      ] else if (_jdErrorMessage != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.resolveBrick(
+                              isDark,
+                            ).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: AppColors.resolveBrick(
+                                isDark,
+                              ).withValues(alpha: 0.3),
                             ),
-                          ] else if (_jdErrorMessage != null) ...[
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppColors.resolveBrick(isDark).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: AppColors.resolveBrick(isDark).withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline_rounded,
+                                color: AppColors.resolveBrick(isDark),
                               ),
-                              child: Row(
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _jdErrorMessage!,
+                                  style: TextStyle(
+                                    color: AppColors.resolveBrick(isDark),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _calculateJdMatch,
+                                child: Text(
+                                  "Retry",
+                                  style: TextStyle(
+                                    color: cobalt,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (_jdMatchData != null) ...[
+                        const SizedBox(height: 24),
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 children: [
-                                  Icon(Icons.error_outline_rounded, color: AppColors.resolveBrick(isDark)),
-                                  const SizedBox(width: 12),
+                                  ScoreStamp(
+                                    score:
+                                        (_jdMatchData!['match_score'] as num?)
+                                            ?.toInt() ??
+                                        75,
+                                    size: 94,
+                                    label: "target fit",
+                                  ),
+                                  const SizedBox(width: 24),
                                   Expanded(
-                                    child: Text(
-                                      _jdErrorMessage!,
-                                      style: TextStyle(color: AppColors.resolveBrick(isDark), fontSize: 13),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Job Description Fit: ${(_jdMatchData!['match_score'] as num?)?.toInt() ?? 75}%",
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          ((_jdMatchData!['match_score']
+                                                              as num?)
+                                                          ?.toInt() ??
+                                                      75) >=
+                                                  75
+                                              ? "Excellent alignment with this position's core requirements."
+                                              : "Moderate alignment. Review missing skills to maximize interview callback rates.",
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: textSecondary,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  TextButton(
-                                    onPressed: _calculateJdMatch,
-                                    child: Text("Retry", style: TextStyle(color: cobalt, fontWeight: FontWeight.bold)),
-                                  ),
                                 ],
                               ),
-                            ),
-                          ] else if (_jdMatchData != null) ...[
-                            const SizedBox(height: 24),
-                            Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: borderColor),
+                              const Divider(height: 32),
+                              // Matched Skills
+                              Text(
+                                "Matched Skills",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children:
+                                    (((_jdMatchData!['matched_skills']
+                                                        as List?) ??
+                                                    [])
+                                                .isEmpty
+                                            ? ["Core technical stack"]
+                                            : ((_jdMatchData!['matched_skills']
+                                                      as List)
+                                                  .map((e) => e.toString())
+                                                  .toList()))
+                                        .map(
+                                          (s) => Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(
+                                                0xFF22C55E,
+                                              ).withValues(alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: const Color(
+                                                  0xFF22C55E,
+                                                ).withValues(alpha: 0.3),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.check_circle_rounded,
+                                                  color: Color(0xFF22C55E),
+                                                  size: 14,
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  s,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Color(0xFF22C55E),
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                              ),
+                              const SizedBox(height: 16),
+                              // Missing Skills
+                              Text(
+                                "Missing / Recommended Skills",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children:
+                                    (((_jdMatchData!['missing_skills']
+                                                        as List?) ??
+                                                    [])
+                                                .isEmpty
+                                            ? ["None detected - strong coverage"]
+                                            : ((_jdMatchData!['missing_skills']
+                                                      as List)
+                                                  .map((e) => e.toString())
+                                                  .toList()))
+                                        .map(
+                                          (s) => Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(
+                                                0xFFF59E0B,
+                                              ).withValues(alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: const Color(
+                                                  0xFFF59E0B,
+                                                ).withValues(alpha: 0.3),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons
+                                                      .add_circle_outline_rounded,
+                                                  color: Color(0xFFF59E0B),
+                                                  size: 14,
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  s,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    color: Color(0xFFF59E0B),
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                              ),
+                              if (_jdMatchData!['recommendations'] != null &&
+                                  _jdMatchData!['recommendations']
+                                      .toString()
+                                      .isNotEmpty) ...[
+                                const SizedBox(height: 20),
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: cobalt.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: cobalt.withValues(alpha: 0.2),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      ScoreStamp(
-                                        score: (_jdMatchData!['match_score'] as num?)?.toInt() ?? 75,
-                                        size: 94,
-                                        label: "target fit",
+                                      Icon(
+                                        Icons.lightbulb_outline_rounded,
+                                        color: cobalt,
+                                        size: 20,
                                       ),
-                                      const SizedBox(width: 24),
+                                      const SizedBox(width: 10),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              "Job Description Fit: ${(_jdMatchData!['match_score'] as num?)?.toInt() ?? 75}%",
-                                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary),
+                                              "Actionable Recommendations",
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                color: cobalt,
+                                              ),
                                             ),
-                                            const SizedBox(height: 6),
+                                            const SizedBox(height: 4),
                                             Text(
-                                              ((_jdMatchData!['match_score'] as num?)?.toInt() ?? 75) >= 75
-                                                  ? "Excellent alignment with this position's core requirements."
-                                                  : "Moderate alignment. Review missing skills to maximize interview callback rates.",
-                                              style: TextStyle(fontSize: 13, color: textSecondary),
+                                              _jdMatchData!['recommendations']
+                                                  .toString(),
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                height: 1.4,
+                                                color: textPrimary,
+                                              ),
                                             ),
                                           ],
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const Divider(height: 32),
-                                  // Matched Skills
-                                  Text("Matched Skills", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textPrimary)),
-                                  const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: (((_jdMatchData!['matched_skills'] as List?) ?? []).isEmpty
-                                            ? ["Core technical stack"]
-                                            : ((_jdMatchData!['matched_skills'] as List).map((e) => e.toString()).toList()))
-                                        .map((s) => Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF22C55E).withOpacity(0.12),
-                                                borderRadius: BorderRadius.circular(8),
-                                                border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.3)),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const Icon(Icons.check_circle_rounded, color: Color(0xFF22C55E), size: 14),
-                                                  const SizedBox(width: 5),
-                                                  Text(s, style: const TextStyle(fontSize: 12, color: Color(0xFF22C55E), fontWeight: FontWeight.w600)),
-                                                ],
-                                              ),
-                                            ))
-                                        .toList(),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  // Missing Skills
-                                  Text("Missing / Recommended Skills", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textPrimary)),
-                                  const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: (((_jdMatchData!['missing_skills'] as List?) ?? []).isEmpty
-                                            ? ["None detected - strong coverage"]
-                                            : ((_jdMatchData!['missing_skills'] as List).map((e) => e.toString()).toList()))
-                                        .map((s) => Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFF59E0B).withOpacity(0.12),
-                                                borderRadius: BorderRadius.circular(8),
-                                                border: Border.all(color: const Color(0xFFF59E0B).withOpacity(0.3)),
-                                              ),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const Icon(Icons.add_circle_outline_rounded, color: Color(0xFFF59E0B), size: 14),
-                                                  const SizedBox(width: 5),
-                                                  Text(s, style: const TextStyle(fontSize: 12, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600)),
-                                                ],
-                                              ),
-                                            ))
-                                        .toList(),
-                                  ),
-                                  if (_jdMatchData!['recommendations'] != null && _jdMatchData!['recommendations'].toString().isNotEmpty) ...[
-                                    const SizedBox(height: 20),
-                                    Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: cobalt.withValues(alpha: 0.08),
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(color: cobalt.withValues(alpha: 0.2)),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (_jdTailoredMarkdown != null) ...[
+                        const SizedBox(height: 24),
+
+                        // ── CHANGES SUMMARY CARD ──
+                        if (_tailorChanges.isNotEmpty ||
+                            _tailorKeywordsAdded.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF1A2332)
+                                  : const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(
+                                  0xFF22C55E,
+                                ).withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.auto_fix_high,
+                                      color: Color(0xFF22C55E),
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      "What Changed — Tailoring Summary",
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: textPrimary,
                                       ),
+                                    ),
+                                  ],
+                                ),
+                                if (_tailorKeywordsAdded.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    "Keywords Incorporated:",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    children: _tailorKeywordsAdded
+                                        .map(
+                                          (kw) => Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(
+                                                0xFF22C55E,
+                                              ).withValues(alpha: 0.15),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: const Color(
+                                                  0xFF22C55E,
+                                                ).withValues(alpha: 0.4),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              "+ $kw",
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFF16A34A),
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                ],
+                                if (_tailorChanges.isNotEmpty) ...[
+                                  const SizedBox(height: 14),
+                                  Text(
+                                    "Specific Changes Made:",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  ...List.generate(_tailorChanges.length, (i) {
+                                    final change = _tailorChanges[i];
+                                    final section = change is Map
+                                        ? (change['section'] ?? '')
+                                        : '';
+                                    final desc = change is Map
+                                        ? (change['description'] ?? '')
+                                        : change.toString();
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 6),
                                       child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Icon(Icons.lightbulb_outline_rounded, color: cobalt, size: 20),
-                                          const SizedBox(width: 10),
+                                          Text(
+                                            "${i + 1}. ",
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: textPrimary,
+                                            ),
+                                          ),
                                           Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  "Actionable Recommendations",
-                                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: cobalt),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  _jdMatchData!['recommendations'].toString(),
-                                                  style: TextStyle(fontSize: 13, height: 1.4, color: textPrimary),
-                                                ),
-                                              ],
+                                            child: RichText(
+                                              text: TextSpan(
+                                                children: [
+                                                  TextSpan(
+                                                    text: section.isNotEmpty
+                                                        ? "[$section] "
+                                                        : "",
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: cobalt,
+                                                    ),
+                                                  ),
+                                                  TextSpan(
+                                                    text: desc,
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: textSecondary,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                  ],
+                                    );
+                                  }),
                                 ],
-                              ),
+                              ],
                             ),
-                          ],
-                          if (_jdTailoredMarkdown != null) ...[
-                            const SizedBox(height: 24),
+                          ),
 
-                            // ── CHANGES SUMMARY CARD ──
-                            if (_tailorChanges.isNotEmpty || _tailorKeywordsAdded.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.all(20),
-                                margin: const EdgeInsets.only(bottom: 16),
-                                decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF1A2332) : const Color(0xFFF0FDF4),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.4)),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.auto_fix_high, color: Color(0xFF22C55E), size: 20),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          "What Changed — Tailoring Summary",
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold,
-                                            color: textPrimary,
+                        // ── TAILORED RESUME OUTPUT ──
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "Auto-Tailored Resume Output",
+                                    style: AppTypography.displayHeading(
+                                      fontSize: 16,
+                                      color: textPrimary,
+                                    ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      OutlinedButton.icon(
+                                        onPressed: () {
+                                          Clipboard.setData(
+                                            ClipboardData(
+                                              text: _jdTailoredMarkdown!,
+                                            ),
+                                          );
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Copied tailored resume markdown to clipboard!",
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        icon: const Icon(
+                                          Icons.copy_rounded,
+                                          size: 16,
+                                        ),
+                                        label: const Text("Copy Text"),
+                                        style: OutlinedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 6,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                    if (_tailorKeywordsAdded.isNotEmpty) ...[
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        "Keywords Incorporated:",
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSecondary),
                                       ),
-                                      const SizedBox(height: 6),
-                                      Wrap(
-                                        spacing: 6,
-                                        runSpacing: 6,
-                                        children: _tailorKeywordsAdded.map((kw) => Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF22C55E).withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(20),
-                                            border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.4)),
+                                      const SizedBox(width: 8),
+                                      ElevatedButton.icon(
+                                        onPressed: () =>
+                                            _showTemplateSelectionModal(
+                                              downloadType: 'jd_tailored',
+                                            ),
+                                        icon: const Icon(
+                                          Icons.picture_as_pdf_rounded,
+                                          size: 16,
+                                        ),
+                                        label: const Text(
+                                          "Download PDF (Select Template)",
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: cobalt,
+                                          foregroundColor: isDark
+                                              ? AppColors.darkPaper
+                                              : Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
                                           ),
-                                          child: Text(
-                                            "+ $kw",
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color(0xFF16A34A),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              4,
                                             ),
                                           ),
-                                        )).toList(),
+                                        ),
                                       ),
                                     ],
-                                    if (_tailorChanges.isNotEmpty) ...[
-                                      const SizedBox(height: 14),
-                                      Text(
-                                        "Specific Changes Made:",
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSecondary),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      ...List.generate(_tailorChanges.length, (i) {
-                                        final change = _tailorChanges[i];
-                                        final section = change is Map ? (change['section'] ?? '') : '';
-                                        final desc = change is Map ? (change['description'] ?? '') : change.toString();
-                                        return Padding(
-                                          padding: const EdgeInsets.only(bottom: 6),
-                                          child: Row(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                "${i + 1}. ",
-                                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textPrimary),
-                                              ),
-                                              Expanded(
-                                                child: RichText(
-                                                  text: TextSpan(
-                                                    children: [
-                                                      TextSpan(
-                                                        text: section.isNotEmpty ? "[$section] " : "",
-                                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: cobalt),
-                                                      ),
-                                                      TextSpan(
-                                                        text: desc,
-                                                        style: TextStyle(fontSize: 12, color: textSecondary),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }),
-                                    ],
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
+                              const Divider(height: 24),
+                              MarkdownBody(data: _jdTailoredMarkdown!),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
 
-                            // ── TAILORED RESUME OUTPUT ──
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: borderColor),
+                // TAB 3: INTERACTIVE AI SUGGESTIONS & RED/GREEN DIFF EDITOR
+                SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Interactive AI Suggestions",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  "Review red (content to remove) vs green (AI suggested bullet) and click ✔ Accept or ✖ Remove.",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: _isDownloading
+                                ? null
+                                : () => _showTemplateSelectionModal(
+                                    downloadType: 'diff_improved',
+                                  ),
+                            icon: _isDownloading
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.download_rounded, size: 18),
+                            label: const Text("Download Improved Resume PDF"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF22C55E),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      // RENDERING INTERACTIVE DIFF CARDS
+                      ..._diffSuggestions.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final item = entry.value;
+                        final status = item['status'] as String;
+
+                        if (status == 'rejected')
+                          return const SizedBox.shrink();
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 20),
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "Auto-Tailored Resume Output",
-                                        style: AppTypography.displayHeading(fontSize: 16, color: textPrimary),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: cobalt.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      item['section'] as String,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: cobalt,
                                       ),
-                                      Row(
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  if (status == 'applied')
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.resolveForest(
+                                          isDark,
+                                        ).withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Row(
                                         children: [
-                                          OutlinedButton.icon(
-                                            onPressed: () {
-                                              Clipboard.setData(ClipboardData(text: _jdTailoredMarkdown!));
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(content: Text("Copied tailored resume markdown to clipboard!")),
-                                              );
-                                            },
-                                            icon: const Icon(Icons.copy_rounded, size: 16),
-                                            label: const Text("Copy Text"),
-                                            style: OutlinedButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                          Icon(
+                                            Icons.check_circle_rounded,
+                                            color: AppColors.resolveForest(
+                                              isDark,
                                             ),
+                                            size: 14,
                                           ),
-                                          const SizedBox(width: 8),
-                                          ElevatedButton.icon(
-                                            onPressed: () => _showTemplateSelectionModal(downloadType: 'jd_tailored'),
-                                            icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
-                                            label: const Text("Download PDF (Select Template)"),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: cobalt,
-                                              foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            "Applied to Resume",
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.resolveForest(
+                                                isDark,
+                                              ),
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ],
-                                  ),
-                                  const Divider(height: 24),
-                                  MarkdownBody(data: _jdTailoredMarkdown!),
+                                    ),
                                 ],
                               ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+                              const SizedBox(height: 16),
 
-                    // TAB 3: INTERACTIVE AI SUGGESTIONS & RED/GREEN DIFF EDITOR
-                    SingleChildScrollView(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Column(
+                              // RED CARD: OLD / WEAK BULLET TO REMOVE
+                              if (status != 'applied')
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF451A1A)
+                                        : const Color(0xFFFEF2F2),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: const Color(
+                                        0xFFEF4444,
+                                      ).withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(
+                                        Icons.remove_circle_outline_rounded,
+                                        color: Color(0xFFEF4444),
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              "Original / Content to Remove",
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFFEF4444),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              item['oldText'] as String,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: Color(0xFFEF4444),
+                                                decoration:
+                                                    TextDecoration.lineThrough,
+                                                decorationColor: Color(
+                                                  0xFFEF4444,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      IconButton(
+                                        onPressed: () => _rejectSuggestion(idx),
+                                        icon: const Icon(
+                                          Icons.close_rounded,
+                                          color: Color(0xFFEF4444),
+                                        ),
+                                        tooltip: "Dismiss / Remove Point",
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              if (status != 'applied')
+                                const SizedBox(height: 12),
+
+                              // GREEN CARD: NEW AI SUGGESTED BULLET TO ADD
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF14532D)
+                                      : const Color(0xFFF0FDF4),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFF22C55E,
+                                    ).withValues(alpha: 0.4),
+                                  ),
+                                ),
+                                child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      "Interactive AI Suggestions",
-                                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textPrimary),
+                                    const Icon(
+                                      Icons.check_circle_outline_rounded,
+                                      color: Color(0xFF22C55E),
+                                      size: 20,
                                     ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      "Review red (content to remove) vs green (AI suggested bullet) and click ✔ Accept or ✖ Remove.",
-                                      style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            "AI Suggested Bullet / Content to Add",
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF22C55E),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            item['newText'] as String,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDark
+                                                  ? const Color(0xFF86EFAC)
+                                                  : const Color(0xFF15803D),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
+                                    if (status != 'applied')
+                                      ElevatedButton.icon(
+                                        onPressed: () => _applySuggestion(idx),
+                                        icon: const Icon(
+                                          Icons.check_rounded,
+                                          size: 16,
+                                        ),
+                                        label: const Text("Accept"),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(
+                                            0xFF22C55E,
+                                          ),
+                                          foregroundColor: Colors.white,
+                                          elevation: 0,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                   ],
-                                ),
-                              ),
-                              ElevatedButton.icon(
-                                onPressed: _isDownloading ? null : () => _showTemplateSelectionModal(downloadType: 'diff_improved'),
-                                icon: _isDownloading
-                                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                    : const Icon(Icons.download_rounded, size: 18),
-                                label: const Text("Download Improved Resume PDF"),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF22C55E),
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 20),
-
-                          // RENDERING INTERACTIVE DIFF CARDS
-                          ..._diffSuggestions.asMap().entries.map((entry) {
-                            final idx = entry.key;
-                            final item = entry.value;
-                            final status = item['status'] as String;
-
-                            if (status == 'rejected') return const SizedBox.shrink();
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 20),
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: cardBg,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: borderColor),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: cobalt.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          item['section'] as String,
-                                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: cobalt),
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      if (status == 'applied')
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.resolveForest(isDark).withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Icon(Icons.check_circle_rounded, color: AppColors.resolveForest(isDark), size: 14),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                "Applied to Resume",
-                                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.resolveForest(isDark)),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-
-                                  // RED CARD: OLD / WEAK BULLET TO REMOVE
-                                  if (status != 'applied')
-                                    Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(
-                                        color: isDark ? const Color(0xFF451A1A) : const Color(0xFFFEF2F2),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.3)),
-                                      ),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          const Icon(Icons.remove_circle_outline_rounded, color: Color(0xFFEF4444), size: 20),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                const Text(
-                                                  "Original / Content to Remove",
-                                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFEF4444)),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  item['oldText'] as String,
-                                                  style: const TextStyle(
-                                                    fontSize: 13,
-                                                    color: Color(0xFFEF4444),
-                                                    decoration: TextDecoration.lineThrough,
-                                                    decorationColor: Color(0xFFEF4444),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          IconButton(
-                                            onPressed: () => _rejectSuggestion(idx),
-                                            icon: const Icon(Icons.close_rounded, color: Color(0xFFEF4444)),
-                                            tooltip: "Dismiss / Remove Point",
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                  if (status != 'applied') const SizedBox(height: 12),
-
-                                  // GREEN CARD: NEW AI SUGGESTED BULLET TO ADD
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
-                                      color: isDark ? const Color(0xFF14532D) : const Color(0xFFF0FDF4),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.4)),
-                                    ),
-                                    child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF22C55E), size: 20),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              const Text(
-                                                "AI Suggested Bullet / Content to Add",
-                                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF22C55E)),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                item['newText'] as String,
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: isDark ? const Color(0xFF86EFAC) : const Color(0xFF15803D),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        if (status != 'applied')
-                                          ElevatedButton.icon(
-                                            onPressed: () => _applySuggestion(idx),
-                                            icon: const Icon(Icons.check_rounded, size: 16),
-                                            label: const Text("Accept"),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(0xFF22C55E),
-                                              foregroundColor: Colors.white,
-                                              elevation: 0,
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ],
-                      ),
-                    ),
-                  ],
+                        );
+                      }),
+                    ],
+                  ),
                 ),
+              ],
+            ),
     );
 
     if (isDesktop) {
@@ -1766,7 +2433,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
               onUpgradePressed: () => PremiumPlanPaywall.showAsDialog(
                 context,
                 featureTitle: "Unlock Pro Features",
-                featureDescription: "Unlimited resume scans, deep skill gap analysis, and tailored career roadmaps.",
+                featureDescription:
+                    "Unlimited resume scans, deep skill gap analysis, and tailored career roadmaps.",
               ),
               onLogoutPressed: () => _confirmLogout(context),
             ),
@@ -1779,12 +2447,19 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     return analysisScaffold;
   }
 
-  Widget _buildAtsGaugeCard(int atsScore, Color cardBg, Color borderColor, Color textPrimary, bool isDark) {
+  Widget _buildAtsGaugeCard(
+    int atsScore,
+    Color cardBg,
+    Color borderColor,
+    Color textPrimary,
+    bool isDark,
+  ) {
     final inkSoft = AppColors.resolveInkSoft(isDark);
     final paperAlt = AppColors.resolvePaperAlt(isDark);
     final rule = AppColors.resolveRule(isDark);
     final cobalt = AppColors.resolveCobalt(isDark);
-    final int analysisCount = (_atsData['analysis_count'] as num?)?.toInt() ?? 1;
+    final int analysisCount =
+        (_atsData['analysis_count'] as num?)?.toInt() ?? 1;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -1800,14 +2475,20 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             children: [
               Text(
                 "ATS RESUME SCORE",
-                style: AppTypography.monoLabel(color: inkSoft, fontSize: 11).copyWith(letterSpacing: 0.6),
+                style: AppTypography.monoLabel(
+                  color: inkSoft,
+                  fontSize: 11,
+                ).copyWith(letterSpacing: 0.6),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: cobalt.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(3),
-                  border: Border.all(color: cobalt.withValues(alpha: 0.35), width: 0.8),
+                  border: Border.all(
+                    color: cobalt.withValues(alpha: 0.35),
+                    width: 0.8,
+                  ),
                 ),
                 child: Text(
                   "SCAN #$analysisCount",
@@ -1824,27 +2505,36 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
           ScoreStamp(
             score: atsScore,
             size: 140,
-            label: atsScore >= 70 ? "ats approved" : (atsScore >= 50 ? "baseline match" : "flagged rework"),
+            label: atsScore >= 70
+                ? "ats approved"
+                : (atsScore >= 50 ? "baseline match" : "flagged rework"),
           ),
           const SizedBox(height: 18),
           Text(
             atsScore >= 70
                 ? "Resume matches top 20% candidate criteria (Scan #$analysisCount)."
                 : (atsScore >= 50
-                    ? "Moderate alignment (Scan #$analysisCount). Address keyword suggestions below."
-                    : "Significant formatting & keyword revisions recommended (Scan #$analysisCount)."),
+                      ? "Moderate alignment (Scan #$analysisCount). Address keyword suggestions below."
+                      : "Significant formatting & keyword revisions recommended (Scan #$analysisCount)."),
             textAlign: TextAlign.center,
-            style: AppTypography.bodyRegular(
-              color: inkSoft,
-              fontSize: 12,
-            ),
+            style: AppTypography.bodyRegular(color: inkSoft, fontSize: 12),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickScoreBreakdownCard(int completeness, int skills, int experience, int education, int formatting, int keywords, Color cardBg, Color borderColor, Color textPrimary) {
+  Widget _buildQuickScoreBreakdownCard(
+    int completeness,
+    int skills,
+    int experience,
+    int education,
+    int formatting,
+    int keywords,
+    Color cardBg,
+    Color borderColor,
+    Color textPrimary,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final paperAlt = AppColors.resolvePaperAlt(isDark);
     final rule = AppColors.resolveRule(isDark);
@@ -1865,18 +2555,48 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             style: AppTypography.displayHeading(color: ink, fontSize: 16),
           ),
           const SizedBox(height: 16),
-          ProgressBarRow(label: "Contact Info & Structure", percentage: completeness, barColor: _scoreColor(completeness, isDark)),
-          ProgressBarRow(label: "Technical Skills Fit", percentage: skills, barColor: _scoreColor(skills, isDark)),
-          ProgressBarRow(label: "Work Experience", percentage: experience, barColor: _scoreColor(experience, isDark)),
-          ProgressBarRow(label: "Education & Degrees", percentage: education, barColor: _scoreColor(education, isDark)),
-          ProgressBarRow(label: "Formatting Quality", percentage: formatting, barColor: _scoreColor(formatting, isDark)),
-          ProgressBarRow(label: "Keyword Density", percentage: keywords, barColor: _scoreColor(keywords, isDark)),
+          ProgressBarRow(
+            label: "Contact Info & Structure",
+            percentage: completeness,
+            barColor: _scoreColor(completeness, isDark),
+          ),
+          ProgressBarRow(
+            label: "Technical Skills Fit",
+            percentage: skills,
+            barColor: _scoreColor(skills, isDark),
+          ),
+          ProgressBarRow(
+            label: "Work Experience",
+            percentage: experience,
+            barColor: _scoreColor(experience, isDark),
+          ),
+          ProgressBarRow(
+            label: "Education & Degrees",
+            percentage: education,
+            barColor: _scoreColor(education, isDark),
+          ),
+          ProgressBarRow(
+            label: "Formatting Quality",
+            percentage: formatting,
+            barColor: _scoreColor(formatting, isDark),
+          ),
+          ProgressBarRow(
+            label: "Keyword Density",
+            percentage: keywords,
+            barColor: _scoreColor(keywords, isDark),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildRealTimeJobsSection(Color cardBg, Color borderColor, Color textPrimary, Color textSecondary, bool isDark) {
+  Widget _buildRealTimeJobsSection(
+    Color cardBg,
+    Color borderColor,
+    Color textPrimary,
+    Color textSecondary,
+    bool isDark,
+  ) {
     final cobalt = AppColors.resolveCobalt(isDark);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1900,11 +2620,17 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                   children: [
                     Text(
                       "Real-Time Matching Jobs",
-                      style: AppTypography.displayHeading(fontSize: 17, color: textPrimary),
+                      style: AppTypography.displayHeading(
+                        fontSize: 17,
+                        color: textPrimary,
+                      ),
                     ),
                     Text(
                       "Live opportunities ranked by resume skills & location",
-                      style: AppTypography.bodyRegular(fontSize: 12, color: textSecondary),
+                      style: AppTypography.bodyRegular(
+                        fontSize: 12,
+                        color: textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -1915,16 +2641,26 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
               decoration: BoxDecoration(
                 color: AppColors.resolveForest(isDark).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: AppColors.resolveForest(isDark).withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.resolveForest(isDark).withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.circle, color: AppColors.resolveForest(isDark), size: 8),
+                  Icon(
+                    Icons.circle,
+                    color: AppColors.resolveForest(isDark),
+                    size: 8,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     "Live Match",
-                    style: TextStyle(color: AppColors.resolveForest(isDark), fontWeight: FontWeight.bold, fontSize: 11),
+                    style: TextStyle(
+                      color: AppColors.resolveForest(isDark),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
@@ -1949,12 +2685,26 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                   Expanded(
                     child: TextField(
                       controller: _locationController,
-                      style: AppTypography.bodyRegular(color: textPrimary, fontSize: 14),
+                      style: AppTypography.bodyRegular(
+                        color: textPrimary,
+                        fontSize: 14,
+                      ),
                       decoration: InputDecoration(
-                        hintText: "Enter location (e.g. Bengaluru, Kochi, London, Remote)...",
-                        hintStyle: AppTypography.bodyRegular(color: textSecondary, fontSize: 13),
-                        prefixIcon: Icon(Icons.location_on_rounded, color: cobalt, size: 20),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        hintText:
+                            "Enter location (e.g. Bengaluru, Kochi, London, Remote)...",
+                        hintStyle: AppTypography.bodyRegular(
+                          color: textSecondary,
+                          fontSize: 13,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.location_on_rounded,
+                          color: cobalt,
+                          size: 20,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         filled: true,
                         fillColor: AppColors.resolvePaper(isDark),
                         border: OutlineInputBorder(
@@ -1975,20 +2725,37 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                   ),
                   const SizedBox(width: 10),
                   ElevatedButton(
-                    onPressed: _isJobsLoading ? null : () => _fetchJobsForLocation(),
+                    onPressed: _isJobsLoading
+                        ? null
+                        : () => _fetchJobsForLocation(),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: cobalt,
-                      foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      foregroundColor: isDark
+                          ? AppColors.darkPaper
+                          : Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
                     child: _isJobsLoading
                         ? SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(color: isDark ? AppColors.darkPaper : Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              color: isDark
+                                  ? AppColors.darkPaper
+                                  : Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
-                        : const Text("Search", style: TextStyle(fontWeight: FontWeight.bold)),
+                        : const Text(
+                            "Search",
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                   ),
                 ],
               ),
@@ -1998,7 +2765,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: _quickLocations.map((loc) {
-                    final isSelected = _selectedLocation.toLowerCase() == loc.toLowerCase();
+                    final isSelected =
+                        _selectedLocation.toLowerCase() == loc.toLowerCase();
                     return Padding(
                       padding: const EdgeInsets.only(right: 8.0),
                       child: FilterChip(
@@ -2008,7 +2776,9 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                         checkmarkColor: cobalt,
                         labelStyle: TextStyle(
                           fontSize: 12,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                           color: isSelected ? cobalt : textSecondary,
                         ),
                         backgroundColor: AppColors.resolvePaperAlt(isDark),
@@ -2052,7 +2822,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       color: cobalt.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Icon(Icons.travel_explore_rounded, color: cobalt, size: 20),
+                    child: Icon(
+                      Icons.travel_explore_rounded,
+                      color: cobalt,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -2061,11 +2835,17 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       children: [
                         Text(
                           "Direct Search on Top Job Portals",
-                          style: AppTypography.displayHeading(fontSize: 14, color: textPrimary),
+                          style: AppTypography.displayHeading(
+                            fontSize: 14,
+                            color: textPrimary,
+                          ),
                         ),
                         Text(
                           "1-Tap search live openings for your role in $_selectedLocation",
-                          style: AppTypography.bodyRegular(fontSize: 12, color: textSecondary),
+                          style: AppTypography.bodyRegular(
+                            fontSize: 12,
+                            color: textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -2082,8 +2862,12 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       icon: Icons.business_center_rounded,
                       color: const Color(0xFF0A66C2),
                       onTap: () {
-                        final role = _detectedRole.isNotEmpty ? _detectedRole : "Software Developer";
-                        _openUrl("https://www.linkedin.com/jobs/search/?keywords=${Uri.encodeComponent(role)}&location=${Uri.encodeComponent(_selectedLocation)}");
+                        final role = _detectedRole.isNotEmpty
+                            ? _detectedRole
+                            : "Software Developer";
+                        _openUrl(
+                          "https://www.linkedin.com/jobs/search/?keywords=${Uri.encodeComponent(role)}&location=${Uri.encodeComponent(_selectedLocation)}",
+                        );
                       },
                     ),
                     const SizedBox(width: 8),
@@ -2092,9 +2876,15 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       icon: Icons.work_history_rounded,
                       color: const Color(0xFF2B5BE7),
                       onTap: () {
-                        final role = _detectedRole.isNotEmpty ? _detectedRole : "Software Developer";
-                        final locSlug = _selectedLocation.toLowerCase().replaceAll(' ', '-');
-                        _openUrl("https://www.naukri.com/jobs-in-$locSlug?kwd=${Uri.encodeComponent(role)}");
+                        final role = _detectedRole.isNotEmpty
+                            ? _detectedRole
+                            : "Software Developer";
+                        final locSlug = _selectedLocation
+                            .toLowerCase()
+                            .replaceAll(' ', '-');
+                        _openUrl(
+                          "https://www.naukri.com/jobs-in-$locSlug?kwd=${Uri.encodeComponent(role)}",
+                        );
                       },
                     ),
                     const SizedBox(width: 8),
@@ -2103,8 +2893,12 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       icon: Icons.search_rounded,
                       color: const Color(0xFF2164F3),
                       onTap: () {
-                        final role = _detectedRole.isNotEmpty ? _detectedRole : "Software Developer";
-                        _openUrl("https://www.indeed.com/jobs?q=${Uri.encodeComponent(role)}&l=${Uri.encodeComponent(_selectedLocation)}");
+                        final role = _detectedRole.isNotEmpty
+                            ? _detectedRole
+                            : "Software Developer";
+                        _openUrl(
+                          "https://www.indeed.com/jobs?q=${Uri.encodeComponent(role)}&l=${Uri.encodeComponent(_selectedLocation)}",
+                        );
                       },
                     ),
                     const SizedBox(width: 8),
@@ -2113,8 +2907,12 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       icon: Icons.flash_on_rounded,
                       color: const Color(0xFF8B5CF6),
                       onTap: () {
-                        final role = _detectedRole.isNotEmpty ? _detectedRole : "Software Developer";
-                        _openUrl("https://www.foundit.in/srp/results?query=${Uri.encodeComponent(role)}&locations=${Uri.encodeComponent(_selectedLocation)}");
+                        final role = _detectedRole.isNotEmpty
+                            ? _detectedRole
+                            : "Software Developer";
+                        _openUrl(
+                          "https://www.foundit.in/srp/results?query=${Uri.encodeComponent(role)}&locations=${Uri.encodeComponent(_selectedLocation)}",
+                        );
                       },
                     ),
                     const SizedBox(width: 8),
@@ -2123,8 +2921,12 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       icon: Icons.travel_explore_rounded,
                       color: const Color(0xFFEA4335),
                       onTap: () {
-                        final role = _detectedRole.isNotEmpty ? _detectedRole : "Software Developer";
-                        _openUrl("https://www.google.com/search?q=${Uri.encodeComponent('$role jobs in $_selectedLocation')}&ibp=htl;jobs");
+                        final role = _detectedRole.isNotEmpty
+                            ? _detectedRole
+                            : "Software Developer";
+                        _openUrl(
+                          "https://www.google.com/search?q=${Uri.encodeComponent('$role jobs in $_selectedLocation')}&ibp=htl;jobs",
+                        );
                       },
                     ),
                   ],
@@ -2150,7 +2952,10 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                 const SizedBox(height: 16),
                 Text(
                   "Finding real-world matching roles in $_selectedLocation...",
-                  style: AppTypography.bodyRegular(color: textSecondary, fontSize: 13),
+                  style: AppTypography.bodyRegular(
+                    color: textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -2170,12 +2975,18 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                 const SizedBox(height: 12),
                 Text(
                   "No matching jobs found in $_selectedLocation.",
-                  style: AppTypography.displayHeading(color: textPrimary, fontSize: 15),
+                  style: AppTypography.displayHeading(
+                    color: textPrimary,
+                    fontSize: 15,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   "Try searching another city or switch back to Remote.",
-                  style: AppTypography.bodyRegular(color: textSecondary, fontSize: 13),
+                  style: AppTypography.bodyRegular(
+                    color: textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
@@ -2187,8 +2998,12 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                   label: const Text("Show Remote Jobs"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: cobalt,
-                    foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    foregroundColor: isDark
+                        ? AppColors.darkPaper
+                        : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                   ),
                 ),
               ],
@@ -2196,32 +3011,56 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
           ),
         ] else ...[
           ..._matchingJobs.map((jobItem) {
-            final job = (jobItem is Map && jobItem.containsKey('job')) ? jobItem['job'] : jobItem;
-            final int matchScore = (jobItem is Map && jobItem.containsKey('match_score'))
+            final job = (jobItem is Map && jobItem.containsKey('job'))
+                ? jobItem['job']
+                : jobItem;
+            final int matchScore =
+                (jobItem is Map && jobItem.containsKey('match_score'))
                 ? (jobItem['match_score'] as num?)?.toInt() ?? 85
-                : (job is Map && job.containsKey('match_score') ? (job['match_score'] as num?)?.toInt() ?? 85 : 85);
+                : (job is Map && job.containsKey('match_score')
+                      ? (job['match_score'] as num?)?.toInt() ?? 85
+                      : 85);
 
-            final String title = (job is Map ? job['title'] : null) ?? 'Software Developer';
-            final String company = (job is Map ? job['company_name'] : null) ?? 'TechCorp Solutions';
-            final String location = (job is Map ? job['location'] : null) ?? _selectedLocation;
-            final String description = (job is Map ? job['description'] : null) ?? 'Exciting opportunity for experienced developers.';
+            final String title =
+                (job is Map ? job['title'] : null) ?? 'Software Developer';
+            final String company =
+                (job is Map ? job['company_name'] : null) ??
+                'TechCorp Solutions';
+            final String location =
+                (job is Map ? job['location'] : null) ?? _selectedLocation;
+            final String description =
+                (job is Map ? job['description'] : null) ??
+                'Exciting opportunity for experienced developers.';
 
             List<String> tags = [];
-            if (job is Map && job['raw_data'] is Map && job['raw_data']['required_skills'] is List) {
-              tags = (job['raw_data']['required_skills'] as List).map((e) => e.toString()).toList();
-            } else if (job is Map && job['raw_data'] is Map && job['raw_data']['tags'] is List) {
-              tags = (job['raw_data']['tags'] as List).map((e) => e.toString()).toList();
+            if (job is Map &&
+                job['raw_data'] is Map &&
+                job['raw_data']['required_skills'] is List) {
+              tags = (job['raw_data']['required_skills'] as List)
+                  .map((e) => e.toString())
+                  .toList();
+            } else if (job is Map &&
+                job['raw_data'] is Map &&
+                job['raw_data']['tags'] is List) {
+              tags = (job['raw_data']['tags'] as List)
+                  .map((e) => e.toString())
+                  .toList();
             }
             if (tags.isEmpty) {
               tags = ["Python", "Django", "REST APIs", "PostgreSQL"];
             }
 
-            final jobKey = '${company.toLowerCase().trim()}_${title.toLowerCase().trim()}';
+            final jobKey =
+                '${company.toLowerCase().trim()}_${title.toLowerCase().trim()}';
             final jobIdStr = (job is Map ? job['id'] : null)?.toString();
-            final currentStatus = _userJobStatuses[jobKey] ?? (jobIdStr != null ? _userJobStatuses[jobIdStr] : null);
+            final currentStatus =
+                _userJobStatuses[jobKey] ??
+                (jobIdStr != null ? _userJobStatuses[jobIdStr] : null);
 
             String sourcePlatform = "Official Career Portal";
-            if (job is Map && job['raw_data'] is Map && job['raw_data']['source_platform'] != null) {
+            if (job is Map &&
+                job['raw_data'] is Map &&
+                job['raw_data']['source_platform'] != null) {
               sourcePlatform = job['raw_data']['source_platform'].toString();
             } else if (job is Map && job['source_platform'] != null) {
               sourcePlatform = job['source_platform'].toString();
@@ -2247,7 +3086,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             } else if (srcLower.contains("jobicy")) {
               platformColor = const Color(0xFF8B5CF6);
               platformIcon = Icons.bolt_rounded;
-            } else if (srcLower.contains("themuse") || srcLower.contains("muse")) {
+            } else if (srcLower.contains("themuse") ||
+                srcLower.contains("muse")) {
               platformColor = const Color(0xFFEC4899);
               platformIcon = Icons.hub_rounded;
             } else if (srcLower.contains("arbeitnow")) {
@@ -2259,7 +3099,8 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             } else if (srcLower.contains("ust")) {
               platformColor = const Color(0xFFE11931);
               platformIcon = Icons.corporate_fare_rounded;
-            } else if (srcLower.contains("tcs") || srcLower.contains("ibegin")) {
+            } else if (srcLower.contains("tcs") ||
+                srcLower.contains("ibegin")) {
               platformColor = const Color(0xFF0078D4);
               platformIcon = Icons.apartment_rounded;
             }
@@ -2281,10 +3122,14 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: platformColor.withOpacity(0.12),
+                          color: platformColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(platformIcon, color: platformColor, size: 24),
+                        child: Icon(
+                          platformIcon,
+                          color: platformColor,
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -2293,22 +3138,37 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                           children: [
                             Text(
                               title,
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textPrimary),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: textPrimary,
+                              ),
                             ),
                             const SizedBox(height: 3),
                             Row(
                               children: [
                                 Text(
                                   company,
-                                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textSecondary),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: textSecondary,
+                                  ),
                                 ),
                                 const SizedBox(width: 8),
-                                Icon(Icons.location_on_outlined, size: 14, color: textSecondary),
+                                Icon(
+                                  Icons.location_on_outlined,
+                                  size: 14,
+                                  color: textSecondary,
+                                ),
                                 const SizedBox(width: 2),
                                 Expanded(
                                   child: Text(
                                     location,
-                                    style: TextStyle(fontSize: 12, color: textSecondary),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: textSecondary,
+                                    ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -2319,11 +3179,20 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       ),
                       const SizedBox(width: 10),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF22C55E).withOpacity(0.15),
+                          color: const Color(
+                            0xFF22C55E,
+                          ).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFF22C55E).withOpacity(0.3)),
+                          border: Border.all(
+                            color: const Color(
+                              0xFF22C55E,
+                            ).withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Text(
                           "$matchScore% Match",
@@ -2344,34 +3213,56 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                     style: TextStyle(
                       fontSize: 13,
                       height: 1.4,
-                      color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                      color: isDark
+                          ? const Color(0xFFCBD5E1)
+                          : const Color(0xFF475569),
                     ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: tags.take(5).map((tag) => Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(6),
+                    children: tags
+                        .take(5)
+                        .map(
+                          (tag) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF334155)
+                                  : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              tag,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark
+                                    ? const Color(0xFFE2E8F0)
+                                    : const Color(0xFF334155),
+                              ),
+                            ),
                           ),
-                          child: Text(
-                            tag,
-                            style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155)),
-                          ),
-                        )).toList(),
+                        )
+                        .toList(),
                   ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
-                          color: platformColor.withOpacity(0.12),
+                          color: platformColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: platformColor.withOpacity(0.3)),
+                          border: Border.all(
+                            color: platformColor.withValues(alpha: 0.3),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -2380,7 +3271,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                             const SizedBox(width: 6),
                             Text(
                               "Direct Opening • $sourcePlatform",
-                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: platformColor),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: platformColor,
+                              ),
                             ),
                           ],
                         ),
@@ -2393,30 +3288,45 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        Text("Search on:", style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textSecondary)),
+                        Text(
+                          "Search on:",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: textSecondary,
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         _buildMiniPlatformChip(
                           label: "LinkedIn",
                           color: const Color(0xFF0A66C2),
-                          onTap: () => _openUrl("https://www.linkedin.com/jobs/search/?keywords=${Uri.encodeComponent('$company $title')}&location=${Uri.encodeComponent(location)}"),
+                          onTap: () => _openUrl(
+                            "https://www.linkedin.com/jobs/search/?keywords=${Uri.encodeComponent('$company $title')}&location=${Uri.encodeComponent(location)}",
+                          ),
                         ),
                         const SizedBox(width: 6),
                         _buildMiniPlatformChip(
                           label: "Naukri",
                           color: const Color(0xFF2B5BE7),
-                          onTap: () => _openUrl("https://www.naukri.com/jobs-in-${Uri.encodeComponent(location.toLowerCase().replaceAll(' ', '-'))}?kwd=${Uri.encodeComponent('$company $title')}"),
+                          onTap: () => _openUrl(
+                            "https://www.naukri.com/jobs-in-${Uri.encodeComponent(location.toLowerCase().replaceAll(' ', '-'))}?kwd=${Uri.encodeComponent('$company $title')}",
+                          ),
                         ),
                         const SizedBox(width: 6),
                         _buildMiniPlatformChip(
                           label: "Indeed",
                           color: const Color(0xFF2164F3),
-                          onTap: () => _openUrl("https://www.indeed.com/jobs?q=${Uri.encodeComponent('$company $title')}&l=${Uri.encodeComponent(location)}"),
+                          onTap: () => _openUrl(
+                            "https://www.indeed.com/jobs?q=${Uri.encodeComponent('$company $title')}&l=${Uri.encodeComponent(location)}",
+                          ),
                         ),
                         const SizedBox(width: 6),
                         _buildMiniPlatformChip(
                           label: "Google Jobs",
                           color: const Color(0xFFEA4335),
-                          onTap: () => _openUrl("https://www.google.com/search?q=${Uri.encodeComponent('$company $title jobs in $location')}&ibp=htl;jobs"),
+                          onTap: () => _openUrl(
+                            "https://www.google.com/search?q=${Uri.encodeComponent('$company $title jobs in $location')}&ibp=htl;jobs",
+                          ),
                         ),
                       ],
                     ),
@@ -2428,17 +3338,23 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       // Move to / Track Status Dropdown
                       PopupMenuButton<String>(
                         tooltip: "Save & Move to Your Jobs",
-                        onSelected: (newSt) => _updateJobTrackerStatus(job, newSt),
+                        onSelected: (newSt) =>
+                            _updateJobTrackerStatus(job, newSt),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: currentStatus != null
-                                ? (_statusColors[currentStatus] ?? cobalt).withValues(alpha: 0.12)
+                                ? (_statusColors[currentStatus] ?? cobalt)
+                                      .withValues(alpha: 0.12)
                                 : AppColors.resolvePaper(isDark),
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
                               color: currentStatus != null
-                                  ? (_statusColors[currentStatus] ?? cobalt).withValues(alpha: 0.4)
+                                  ? (_statusColors[currentStatus] ?? cobalt)
+                                        .withValues(alpha: 0.4)
                                   : borderColor,
                             ),
                           ),
@@ -2446,21 +3362,35 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                currentStatus != null ? (_statusIcons[currentStatus] ?? Icons.bookmark_rounded) : Icons.bookmark_add_outlined,
+                                currentStatus != null
+                                    ? (_statusIcons[currentStatus] ??
+                                          Icons.bookmark_rounded)
+                                    : Icons.bookmark_add_outlined,
                                 size: 14,
-                                color: currentStatus != null ? (_statusColors[currentStatus] ?? cobalt) : textPrimary,
+                                color: currentStatus != null
+                                    ? (_statusColors[currentStatus] ?? cobalt)
+                                    : textPrimary,
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                currentStatus != null ? (_statusTitles[currentStatus] ?? currentStatus) : "Track Job",
+                                currentStatus != null
+                                    ? (_statusTitles[currentStatus] ??
+                                          currentStatus)
+                                    : "Track Job",
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: currentStatus != null ? (_statusColors[currentStatus] ?? cobalt) : textPrimary,
+                                  color: currentStatus != null
+                                      ? (_statusColors[currentStatus] ?? cobalt)
+                                      : textPrimary,
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              Icon(Icons.arrow_drop_down_rounded, size: 16, color: textSecondary),
+                              Icon(
+                                Icons.arrow_drop_down_rounded,
+                                size: 16,
+                                color: textSecondary,
+                              ),
                             ],
                           ),
                         ),
@@ -2476,7 +3406,14 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                                 children: [
                                   Icon(icon, color: color, size: 16),
                                   const SizedBox(width: 10),
-                                  Text(label, style: TextStyle(fontWeight: currentStatus == st ? FontWeight.bold : FontWeight.normal)),
+                                  Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontWeight: currentStatus == st
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
                                 ],
                               ),
                             );
@@ -2487,30 +3424,56 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
                       ElevatedButton.icon(
                         onPressed: () => _applyToJob(job),
                         icon: const Icon(Icons.open_in_new_rounded, size: 15),
-                        label: const Text("Apply Now", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        label: const Text(
+                          "Apply Now",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: platformColor,
                           foregroundColor: Colors.white,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 10),
                       ElevatedButton.icon(
                         onPressed: () {
                           _tabController.animateTo(1);
-                          _jdController.text = description.length > 30 ? description : title;
+                          _jdController.text = description.length > 30
+                              ? description
+                              : title;
                           _calculateJdMatch();
                         },
                         icon: const Icon(Icons.analytics_rounded, size: 15),
-                        label: const Text("View Job Match", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        label: const Text(
+                          "View Job Match",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: cobalt,
-                          foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                          foregroundColor: isDark
+                              ? AppColors.darkPaper
+                              : Colors.white,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
                         ),
                       ),
                     ],
@@ -2536,9 +3499,9 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.35)),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -2547,7 +3510,11 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
             const SizedBox(width: 6),
             Text(
               label,
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: color),
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
             const SizedBox(width: 4),
             Icon(Icons.arrow_outward_rounded, size: 13, color: color),
@@ -2568,16 +3535,20 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: color.withOpacity(0.25)),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               label,
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
             ),
             const SizedBox(width: 3),
             Icon(Icons.open_in_new_rounded, size: 10, color: color),
@@ -2587,4 +3558,3 @@ class _ATSAnalysisScreenState extends State<ATSAnalysisScreen> with SingleTicker
     );
   }
 }
-

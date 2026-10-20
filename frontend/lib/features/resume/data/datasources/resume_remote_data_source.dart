@@ -5,15 +5,33 @@ import 'package:frontend/features/resume/data/models/resume_models.dart';
 
 abstract class ResumeRemoteDataSource {
   Future<List<ResumeModel>> getMyResumes();
-  Future<ResumeModel> uploadResume({required dynamic fileBytes, required String fileName, String? title});
+  Future<ResumeModel> uploadResume({
+    required dynamic fileBytes,
+    required String fileName,
+    String? title,
+  });
   Future<void> deleteResume(String resumeId);
   Future<void> deleteAllResumes();
   Future<ATSAnalysisModel> getATSAnalysis(String resumeId);
-  Future<ResumeImprovementModel> getResumeImprovement(String resumeId, {bool refresh = false});
-  Future<String> getResumeContent(String resumeId, {String type = 'diff_improved', bool refresh = false});
-  Future<void> saveResumeContent(String resumeId, String content, {String type = 'diff_improved'});
+  Future<ResumeImprovementModel> getResumeImprovement(
+    String resumeId, {
+    bool refresh = false,
+  });
+  Future<String> getResumeContent(
+    String resumeId, {
+    String type = 'diff_improved',
+    bool refresh = false,
+  });
+  Future<void> saveResumeContent(
+    String resumeId,
+    String content, {
+    String type = 'diff_improved',
+  });
   Future<JDMatchModel> calculateJDMatch(String resumeId, String jobDescription);
-  Future<Map<String, dynamic>> autoTailorResume(String resumeId, String jobDescription);
+  Future<Map<String, dynamic>> autoTailorResume(
+    String resumeId,
+    String jobDescription,
+  );
   Future<List<dynamic>> getMatchingJobs(String resumeId, {String? location});
 }
 
@@ -30,7 +48,9 @@ class ResumeRemoteDataSourceImpl implements ResumeRemoteDataSource {
         final List<dynamic> list = response.data is List
             ? response.data
             : (response.data['data'] ?? response.data['results'] ?? []);
-        return list.map((item) => ResumeModel.fromJson(item as Map<String, dynamic>)).toList();
+        return list
+            .map((item) => ResumeModel.fromJson(item as Map<String, dynamic>))
+            .toList();
       }
       throw ServerException("Failed to fetch resumes.");
     } catch (e) {
@@ -40,15 +60,20 @@ class ResumeRemoteDataSourceImpl implements ResumeRemoteDataSource {
   }
 
   @override
-  Future<ResumeModel> uploadResume({required dynamic fileBytes, required String fileName, String? title}) async {
+  Future<ResumeModel> uploadResume({
+    required dynamic fileBytes,
+    required String fileName,
+    String? title,
+  }) async {
     try {
       final formData = FormData.fromMap({
         'file': MultipartFile.fromBytes(fileBytes, filename: fileName),
-        if (title != null) 'title': title,
+        'title': ?title,
       });
 
       final response = await apiClient.post('resumes/upload/', data: formData);
-      if ((response.statusCode == 200 || response.statusCode == 201) && response.data != null) {
+      if ((response.statusCode == 200 || response.statusCode == 201) &&
+          response.data != null) {
         final data = response.data is Map && response.data.containsKey('data')
             ? response.data['data']
             : response.data;
@@ -97,9 +122,14 @@ class ResumeRemoteDataSourceImpl implements ResumeRemoteDataSource {
   }
 
   @override
-  Future<ResumeImprovementModel> getResumeImprovement(String resumeId, {bool refresh = false}) async {
+  Future<ResumeImprovementModel> getResumeImprovement(
+    String resumeId, {
+    bool refresh = false,
+  }) async {
     try {
-      final response = await apiClient.get('analysis/improve/$resumeId/${refresh ? '?refresh=true' : ''}');
+      final response = await apiClient.get(
+        'analysis/improve/$resumeId/${refresh ? '?refresh=true' : ''}',
+      );
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data is Map && response.data.containsKey('data')
             ? response.data['data']
@@ -114,9 +144,15 @@ class ResumeRemoteDataSourceImpl implements ResumeRemoteDataSource {
   }
 
   @override
-  Future<String> getResumeContent(String resumeId, {String type = 'diff_improved', bool refresh = false}) async {
+  Future<String> getResumeContent(
+    String resumeId, {
+    String type = 'diff_improved',
+    bool refresh = false,
+  }) async {
     try {
-      final response = await apiClient.get('analysis/improve/$resumeId/content/?type=$type${refresh ? '&refresh=true' : ''}');
+      final response = await apiClient.get(
+        'analysis/improve/$resumeId/content/?type=$type${refresh ? '&refresh=true' : ''}',
+      );
       if (response.statusCode == 200 && response.data != null) {
         return (response.data['data']?['content'] ?? '').toString();
       }
@@ -127,23 +163,31 @@ class ResumeRemoteDataSourceImpl implements ResumeRemoteDataSource {
   }
 
   @override
-  Future<void> saveResumeContent(String resumeId, String content, {String type = 'diff_improved'}) async {
+  Future<void> saveResumeContent(
+    String resumeId,
+    String content, {
+    String type = 'diff_improved',
+  }) async {
     try {
-      await apiClient.put('analysis/improve/$resumeId/content/', data: {
-        'content': content,
-        'type': type,
-      });
+      await apiClient.put(
+        'analysis/improve/$resumeId/content/',
+        data: {'content': content, 'type': type},
+      );
     } catch (e) {
       throw ServerException(e.toString());
     }
   }
 
   @override
-  Future<JDMatchModel> calculateJDMatch(String resumeId, String jobDescription) async {
+  Future<JDMatchModel> calculateJDMatch(
+    String resumeId,
+    String jobDescription,
+  ) async {
     try {
-      final response = await apiClient.post('analysis/jd-match/$resumeId/', data: {
-        'job_description': jobDescription,
-      });
+      final response = await apiClient.post(
+        'analysis/jd-match/$resumeId/',
+        data: {'job_description': jobDescription},
+      );
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data is Map && response.data.containsKey('data')
             ? response.data['data']
@@ -158,11 +202,15 @@ class ResumeRemoteDataSourceImpl implements ResumeRemoteDataSource {
   }
 
   @override
-  Future<Map<String, dynamic>> autoTailorResume(String resumeId, String jobDescription) async {
+  Future<Map<String, dynamic>> autoTailorResume(
+    String resumeId,
+    String jobDescription,
+  ) async {
     try {
-      final response = await apiClient.post('analysis/auto-tailor/$resumeId/', data: {
-        'job_description': jobDescription,
-      });
+      final response = await apiClient.post(
+        'analysis/auto-tailor/$resumeId/',
+        data: {'job_description': jobDescription},
+      );
       if (response.statusCode == 200 && response.data != null) {
         return (response.data['data'] ?? response.data) as Map<String, dynamic>;
       }
@@ -174,12 +222,17 @@ class ResumeRemoteDataSourceImpl implements ResumeRemoteDataSource {
   }
 
   @override
-  Future<List<dynamic>> getMatchingJobs(String resumeId, {String? location}) async {
+  Future<List<dynamic>> getMatchingJobs(
+    String resumeId, {
+    String? location,
+  }) async {
     try {
       final locQuery = (location != null && location.trim().isNotEmpty)
           ? '?location=${Uri.encodeComponent(location.trim())}'
           : '';
-      final response = await apiClient.get('jobs/resume-matches/$resumeId/$locQuery');
+      final response = await apiClient.get(
+        'jobs/resume-matches/$resumeId/$locQuery',
+      );
       if (response.statusCode == 200 && response.data != null) {
         if (response.data is Map && response.data['data'] is List) {
           return response.data['data'];

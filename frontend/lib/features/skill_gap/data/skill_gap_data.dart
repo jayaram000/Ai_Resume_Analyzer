@@ -38,7 +38,9 @@ class SkillGapModel extends SkillGapEntity {
       final rawCat = json['categorized_gaps'] as Map;
       rawCat.forEach((key, val) {
         if (val is List) {
-          parsedCategorized[key.toString()] = val.map((e) => e.toString()).toList();
+          parsedCategorized[key.toString()] = val
+              .map((e) => e.toString())
+              .toList();
         }
       });
     }
@@ -78,15 +80,22 @@ class SkillGapModel extends SkillGapEntity {
     return SkillGapModel(
       id: json['id']?.toString(),
       targetRole: target,
-      readinessScore: (json['readiness_score'] ?? json['match_score'] as num?)?.toInt() ?? 65,
-      readinessLevel: json['readiness_level']?.toString() ?? 'Strategic Role Transition',
+      readinessScore:
+          (json['readiness_score'] ?? json['match_score'] as num?)?.toInt() ??
+          65,
+      readinessLevel:
+          json['readiness_level']?.toString() ?? 'Strategic Role Transition',
       readinessSummary: json['readiness_summary']?.toString() ?? '',
-      matchingSkills: parseStringList(json['matched_skills'] ?? json['matching_skills']),
+      matchingSkills: parseStringList(
+        json['matched_skills'] ?? json['matching_skills'],
+      ),
       missingSkills: parseStringList(json['missing_skills']),
       categorizedGaps: parsedCategorized,
       roadmap: parsedRoadmap,
       recommendedProjects: parsedProjects,
-      recommendedCertifications: parseStringList(json['recommended_certifications']),
+      recommendedCertifications: parseStringList(
+        json['recommended_certifications'],
+      ),
       resumeTransitionTips: parseStringList(json['resume_transition_tips']),
       learningResources: parsedResources,
       isGuidingMode: json['is_guiding_mode'] == true,
@@ -95,7 +104,11 @@ class SkillGapModel extends SkillGapEntity {
 }
 
 abstract class SkillGapRemoteDataSource {
-  Future<SkillGapModel> analyzeSkillGap({required String targetRole, String? experience, String? resumeId});
+  Future<SkillGapModel> analyzeSkillGap({
+    required String targetRole,
+    String? experience,
+    String? resumeId,
+  });
   Future<List<SkillGapModel>> getRecentSkillGaps();
   Future<bool> deleteSkillGap(String id);
 }
@@ -105,19 +118,29 @@ class SkillGapRemoteDataSourceImpl implements SkillGapRemoteDataSource {
   SkillGapRemoteDataSourceImpl({required this.apiClient});
 
   @override
-  Future<SkillGapModel> analyzeSkillGap({required String targetRole, String? experience, String? resumeId}) async {
+  Future<SkillGapModel> analyzeSkillGap({
+    required String targetRole,
+    String? experience,
+    String? resumeId,
+  }) async {
     try {
-      final response = await apiClient.post('analysis/skill-gap/', data: {
-        'target_role': targetRole,
-        if (experience != null) 'experience': experience,
-        if (resumeId != null) 'resume_id': resumeId,
-      });
+      final response = await apiClient.post(
+        'analysis/skill-gap/',
+        data: {
+          'target_role': targetRole,
+          'experience': ?experience,
+          'resume_id': ?resumeId,
+        },
+      );
 
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data is Map && response.data.containsKey('data')
             ? response.data['data']
             : response.data;
-        return SkillGapModel.fromJson(Map<String, dynamic>.from(data as Map), targetRole);
+        return SkillGapModel.fromJson(
+          Map<String, dynamic>.from(data as Map),
+          targetRole,
+        );
       }
       throw ServerException("Failed to analyze skill gap.");
     } on DioException catch (e) {
@@ -125,10 +148,15 @@ class SkillGapRemoteDataSourceImpl implements SkillGapRemoteDataSource {
         final detail = e.response?.data is Map
             ? (e.response?.data['message'] ?? e.response?.data['detail'])
             : null;
-        throw ServerException(detail?.toString() ?? "Premium subscription required to access this resource.");
+        throw ServerException(
+          detail?.toString() ??
+              "Premium subscription required to access this resource.",
+        );
       }
       final msg = e.response?.data is Map
-          ? (e.response?.data['message'] ?? e.response?.data['detail'] ?? "Server error (${e.response?.statusCode})")
+          ? (e.response?.data['message'] ??
+                e.response?.data['detail'] ??
+                "Server error (${e.response?.statusCode})")
           : (e.message ?? "Network error occurred.");
       throw ServerException(msg.toString());
     } catch (e) {
@@ -147,7 +175,12 @@ class SkillGapRemoteDataSourceImpl implements SkillGapRemoteDataSource {
             : response.data;
         if (data is List) {
           return data
-              .map((e) => SkillGapModel.fromJson(Map<String, dynamic>.from(e as Map), e['target_role'] ?? 'Role'))
+              .map(
+                (e) => SkillGapModel.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                  e['target_role'] ?? 'Role',
+                ),
+              )
               .toList();
         }
       }
@@ -173,9 +206,17 @@ class SkillGapRepositoryImpl implements SkillGapRepository {
   SkillGapRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Result<SkillGapEntity>> analyzeSkillGap({required String targetRole, String? experience, String? resumeId}) async {
+  Future<Result<SkillGapEntity>> analyzeSkillGap({
+    required String targetRole,
+    String? experience,
+    String? resumeId,
+  }) async {
     try {
-      final result = await remoteDataSource.analyzeSkillGap(targetRole: targetRole, experience: experience, resumeId: resumeId);
+      final result = await remoteDataSource.analyzeSkillGap(
+        targetRole: targetRole,
+        experience: experience,
+        resumeId: resumeId,
+      );
       return Result.success(result);
     } on ServerException catch (e) {
       return Result.failure(ServerFailure(e.message));

@@ -36,7 +36,8 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
           resumesList = response.data;
         } else if (response.data is Map && response.data.containsKey('data')) {
           resumesList = response.data['data'];
-        } else if (response.data is Map && response.data.containsKey('results')) {
+        } else if (response.data is Map &&
+            response.data.containsKey('results')) {
           resumesList = response.data['results'];
         }
       }
@@ -65,10 +66,13 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
     });
 
     try {
-      final response = await sl<ApiClient>().post('resumes/compare/', data: {
-        'before_resume_id': _selectedResumeId1,
-        'after_resume_id': _selectedResumeId2,
-      });
+      final response = await sl<ApiClient>().post(
+        'resumes/compare/',
+        data: {
+          'before_resume_id': _selectedResumeId1,
+          'after_resume_id': _selectedResumeId2,
+        },
+      );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         setState(() {
@@ -91,14 +95,16 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
             final resetTime = DateTime.tryParse(resetStr)?.toLocal();
             if (resetTime != null) {
               final diff = resetTime.difference(DateTime.now());
-              timeMsg = " Your next slot unlocks in ${diff.inHours}h ${diff.inMinutes.remainder(60)}m.";
+              timeMsg =
+                  " Your next slot unlocks in ${diff.inHours}h ${diff.inMinutes.remainder(60)}m.";
             }
           }
           if (mounted) {
             PremiumPlanPaywall.showAsDialog(
               context,
               featureTitle: "Free Comparison Quota Reached",
-              featureDescription: "You've used all 3 free actions in your current 5-hour window.$timeMsg Upgrade to Pro for unlimited instant comparisons.",
+              featureDescription:
+                  "You've used all 3 free actions in your current 5-hour window.$timeMsg Upgrade to Pro for unlimited instant comparisons.",
             );
           }
         }
@@ -169,7 +175,11 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.compare_arrows_rounded, size: 18, color: cobalt),
+                            Icon(
+                              Icons.compare_arrows_rounded,
+                              size: 18,
+                              color: cobalt,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               "SELECT TWO RESUMES TO COMPARE",
@@ -187,14 +197,19 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                value: _selectedResumeId1,
+                                initialValue: _selectedResumeId1,
                                 dropdownColor: paperAlt,
                                 style: TextStyle(color: ink, fontSize: 13),
                                 decoration: InputDecoration(
                                   labelText: "ORIGINAL / BASE VERSION",
-                                  labelStyle: TextStyle(color: inkSoft, fontSize: 11),
+                                  labelStyle: TextStyle(
+                                    color: inkSoft,
+                                    fontSize: 11,
+                                  ),
                                 ),
-                                items: _resumes.map<DropdownMenuItem<String>>((res) {
+                                items: _resumes.map<DropdownMenuItem<String>>((
+                                  res,
+                                ) {
                                   return DropdownMenuItem<String>(
                                     value: res['id'].toString(),
                                     child: Text(
@@ -204,20 +219,27 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
                                     ),
                                   );
                                 }).toList(),
-                                onChanged: (val) => setState(() { _selectedResumeId1 = val; }),
+                                onChanged: (val) => setState(() {
+                                  _selectedResumeId1 = val;
+                                }),
                               ),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                value: _selectedResumeId2,
+                                initialValue: _selectedResumeId2,
                                 dropdownColor: paperAlt,
                                 style: TextStyle(color: ink, fontSize: 13),
                                 decoration: InputDecoration(
                                   labelText: "REVISED / TARGET VERSION",
-                                  labelStyle: TextStyle(color: inkSoft, fontSize: 11),
+                                  labelStyle: TextStyle(
+                                    color: inkSoft,
+                                    fontSize: 11,
+                                  ),
                                 ),
-                                items: _resumes.map<DropdownMenuItem<String>>((res) {
+                                items: _resumes.map<DropdownMenuItem<String>>((
+                                  res,
+                                ) {
                                   return DropdownMenuItem<String>(
                                     value: res['id'].toString(),
                                     child: Text(
@@ -227,7 +249,9 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
                                     ),
                                   );
                                 }).toList(),
-                                onChanged: (val) => setState(() { _selectedResumeId2 = val; }),
+                                onChanged: (val) => setState(() {
+                                  _selectedResumeId2 = val;
+                                }),
                               ),
                             ),
                           ],
@@ -236,22 +260,39 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
                         const Center(child: UsageQuotaBadge(compact: true)),
                         const SizedBox(height: 12),
                         _isComparing
-                            ? Center(child: CircularProgressIndicator(color: cobalt))
+                            ? Center(
+                                child: CircularProgressIndicator(color: cobalt),
+                              )
                             : SizedBox(
                                 width: double.infinity,
                                 height: 42,
                                 child: ElevatedButton.icon(
-                                  onPressed: _selectedResumeId1 != null && _selectedResumeId2 != null ? _compareResumes : null,
-                                  icon: const Icon(Icons.analytics_outlined, size: 18),
+                                  onPressed:
+                                      _selectedResumeId1 != null &&
+                                          _selectedResumeId2 != null
+                                      ? _compareResumes
+                                      : null,
+                                  icon: const Icon(
+                                    Icons.analytics_outlined,
+                                    size: 18,
+                                  ),
                                   label: const Text(
                                     "EXECUTE COMPARISON AUDIT",
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                    ),
                                   ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: cobalt,
-                                    foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                                    foregroundColor: isDark
+                                        ? AppColors.darkPaper
+                                        : Colors.white,
                                     elevation: 0,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -270,7 +311,10 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(color: brick.withValues(alpha: 0.3)),
                       ),
-                      child: Text(_errorMessage!, style: TextStyle(color: brick, fontSize: 13)),
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: brick, fontSize: 13),
+                      ),
                     ),
 
                   // Results block
@@ -279,11 +323,25 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildScoreDisplayCard("ATS SCORE (BEFORE)", _comparisonData!['before_resume']['analysis_snapshot']['ats_score'], brick, paperAlt, rule, inkSoft),
+                          child: _buildScoreDisplayCard(
+                            "ATS SCORE (BEFORE)",
+                            _comparisonData!['before_resume']['analysis_snapshot']['ats_score'],
+                            brick,
+                            paperAlt,
+                            rule,
+                            inkSoft,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _buildScoreDisplayCard("ATS SCORE (AFTER)", _comparisonData!['after_resume']['analysis_snapshot']['ats_score'], forest, paperAlt, rule, inkSoft),
+                          child: _buildScoreDisplayCard(
+                            "ATS SCORE (AFTER)",
+                            _comparisonData!['after_resume']['analysis_snapshot']['ats_score'],
+                            forest,
+                            paperAlt,
+                            rule,
+                            inkSoft,
+                          ),
                         ),
                       ],
                     ),
@@ -291,11 +349,25 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: _buildScoreDisplayCard("HEALTH (BEFORE)", _comparisonData!['before_resume']['analysis_snapshot']['health_score'], ochre, paperAlt, rule, inkSoft),
+                          child: _buildScoreDisplayCard(
+                            "HEALTH (BEFORE)",
+                            _comparisonData!['before_resume']['analysis_snapshot']['health_score'],
+                            ochre,
+                            paperAlt,
+                            rule,
+                            inkSoft,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _buildScoreDisplayCard("HEALTH (AFTER)", _comparisonData!['after_resume']['analysis_snapshot']['health_score'], cobalt, paperAlt, rule, inkSoft),
+                          child: _buildScoreDisplayCard(
+                            "HEALTH (AFTER)",
+                            _comparisonData!['after_resume']['analysis_snapshot']['health_score'],
+                            cobalt,
+                            paperAlt,
+                            rule,
+                            inkSoft,
+                          ),
                         ),
                       ],
                     ),
@@ -308,63 +380,125 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(color: rule),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20.0,
+                        vertical: 14,
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             "ATS SCORE PROGRESSION DELTA",
-                            style: TextStyle(color: inkSoft, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                            style: TextStyle(
+                              color: inkSoft,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
                           ),
                           Text(
                             "${_comparisonData!['ats_difference'] >= 0 ? '+' : ''}${_comparisonData!['ats_difference']} PTS",
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
-                              color: _comparisonData!['ats_difference'] >= 0 ? forest : brick,
+                              color: _comparisonData!['ats_difference'] >= 0
+                                  ? forest
+                                  : brick,
                             ),
-                          )
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 20),
 
                     // Added & Removed Skills
-                    Text("SKILL DELTAS", style: TextStyle(color: inkSoft, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
+                    Text(
+                      "SKILL DELTAS",
+                      style: TextStyle(
+                        color: inkSoft,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: _buildSkillsProgressCard("ADDED SKILLS", _comparisonData!['added_skills'], forest, paperAlt, rule, inkSoft),
+                          child: _buildSkillsProgressCard(
+                            "ADDED SKILLS",
+                            _comparisonData!['added_skills'],
+                            forest,
+                            paperAlt,
+                            rule,
+                            inkSoft,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _buildSkillsProgressCard("REMOVED SKILLS", _comparisonData!['removed_skills'], brick, paperAlt, rule, inkSoft),
+                          child: _buildSkillsProgressCard(
+                            "REMOVED SKILLS",
+                            _comparisonData!['removed_skills'],
+                            brick,
+                            paperAlt,
+                            rule,
+                            inkSoft,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
 
                     // Added & Removed Keywords
-                    Text("KEYWORD DELTAS", style: TextStyle(color: inkSoft, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
+                    Text(
+                      "KEYWORD DELTAS",
+                      style: TextStyle(
+                        color: inkSoft,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: _buildSkillsProgressCard("ADDED KEYWORDS", _comparisonData!['added_keywords'], cobalt, paperAlt, rule, inkSoft),
+                          child: _buildSkillsProgressCard(
+                            "ADDED KEYWORDS",
+                            _comparisonData!['added_keywords'],
+                            cobalt,
+                            paperAlt,
+                            rule,
+                            inkSoft,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _buildSkillsProgressCard("REMOVED KEYWORDS", _comparisonData!['removed_keywords'], ochre, paperAlt, rule, inkSoft),
+                          child: _buildSkillsProgressCard(
+                            "REMOVED KEYWORDS",
+                            _comparisonData!['removed_keywords'],
+                            ochre,
+                            paperAlt,
+                            rule,
+                            inkSoft,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
 
                     // Visual Summary
-                    Text("AI ANALYSIS & PROGRESSION AUDIT", style: TextStyle(color: inkSoft, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.6)),
+                    Text(
+                      "AI ANALYSIS & PROGRESSION AUDIT",
+                      style: TextStyle(
+                        color: inkSoft,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Container(
                       width: double.infinity,
@@ -375,7 +509,8 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
                       ),
                       padding: const EdgeInsets.all(18.0),
                       child: Text(
-                        _comparisonData!['ai_summary'] ?? "No summary provided.",
+                        _comparisonData!['ai_summary'] ??
+                            "No summary provided.",
                         style: TextStyle(color: ink, height: 1.5, fontSize: 13),
                       ),
                     ),
@@ -402,7 +537,14 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
     );
   }
 
-  Widget _buildScoreDisplayCard(String title, dynamic score, Color scoreColor, Color cardBg, Color rule, Color textMuted) {
+  Widget _buildScoreDisplayCard(
+    String title,
+    dynamic score,
+    Color scoreColor,
+    Color cardBg,
+    Color rule,
+    Color textMuted,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: cardBg,
@@ -413,18 +555,37 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TextStyle(color: textMuted, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+          Text(
+            title,
+            style: TextStyle(
+              color: textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: 8),
           Text(
             "$score",
-            style: TextStyle(color: scoreColor, fontSize: 28, fontWeight: FontWeight.w800),
+            style: TextStyle(
+              color: scoreColor,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSkillsProgressCard(String title, List<dynamic> skills, Color badgeColor, Color cardBg, Color rule, Color textMuted) {
+  Widget _buildSkillsProgressCard(
+    String title,
+    List<dynamic> skills,
+    Color badgeColor,
+    Color cardBg,
+    Color rule,
+    Color textMuted,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: cardBg,
@@ -435,29 +596,50 @@ class _ResumeComparisonScreenState extends State<ResumeComparisonScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TextStyle(color: textMuted, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 0.5)),
+          Text(
+            title,
+            style: TextStyle(
+              color: textMuted,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+              letterSpacing: 0.5,
+            ),
+          ),
           const SizedBox(height: 12),
           if (skills.isEmpty)
-            Text("None recorded", style: TextStyle(color: textMuted, fontSize: 12))
+            Text(
+              "None recorded",
+              style: TextStyle(color: textMuted, fontSize: 12),
+            )
           else
             Wrap(
               spacing: 6,
               runSpacing: 6,
               children: skills.map<Widget>((s) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: badgeColor.withValues(alpha: 0.3), width: 1),
+                    border: Border.all(
+                      color: badgeColor.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
                   ),
                   child: Text(
                     s.toString(),
-                    style: TextStyle(color: badgeColor, fontSize: 11, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: badgeColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 );
               }).toList(),
-            )
+            ),
         ],
       ),
     );

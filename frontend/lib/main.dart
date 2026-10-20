@@ -116,6 +116,24 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
 
+  String _cleanErrorMessage(String message) {
+    final lower = message.toLowerCase();
+    if (lower.contains("dioexception") ||
+        lower.contains("401") ||
+        lower.contains("no active account") ||
+        lower.contains("validatestatus") ||
+        lower.contains("credentials")) {
+      return "Invalid email or password. Please try again.";
+    }
+    if (lower.contains("connection error") ||
+        lower.contains("socketexception") ||
+        lower.contains("connecttimeout") ||
+        lower.contains("failed host lookup")) {
+      return "Cannot connect to server. Please check your internet connection.";
+    }
+    return message;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -272,16 +290,31 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (state is AuthFailure) {
                         return Container(
                           margin: const EdgeInsets.only(bottom: 16.0),
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
                             color: AppColors.resolveBrick(isDark).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(color: AppColors.resolveBrick(isDark).withValues(alpha: 0.3)),
                           ),
-                          child: Text(
-                            state.message,
-                            style: TextStyle(color: AppColors.resolveBrick(isDark), fontSize: 12),
-                            textAlign: TextAlign.center,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline_rounded,
+                                size: 16,
+                                color: AppColors.resolveBrick(isDark),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _cleanErrorMessage(state.message),
+                                  style: TextStyle(
+                                    color: AppColors.resolveBrick(isDark),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         );
                       }
@@ -321,8 +354,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text("Need an account? ", style: TextStyle(color: textSecondary, fontSize: 13)),
                       GestureDetector(
@@ -575,8 +609,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text("Already have an account? ", style: TextStyle(color: textSecondary, fontSize: 13)),
                         GestureDetector(

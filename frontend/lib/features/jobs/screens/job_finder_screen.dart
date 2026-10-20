@@ -26,16 +26,9 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
     "Senior",
     "Lead",
     "Director",
-    "Executive"
+    "Executive",
   ];
-  final List<String> _yearOptions = [
-    "Any",
-    "0-1",
-    "1-3",
-    "3-5",
-    "5-8",
-    "8+"
-  ];
+  final List<String> _yearOptions = ["Any", "0-1", "1-3", "3-5", "5-8", "8+"];
 
   List<dynamic> _jobs = [];
   List<dynamic> _recommendations = [];
@@ -63,17 +56,21 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
 
       if (recsRes.isSuccess && recsRes.data != null) {
         setState(() {
-          _recommendations = recsRes.data!.map((j) => {
-            'id': j.id,
-            'title': j.title,
-            'company_name': j.companyName,
-            'location': j.location,
-            'description': j.description,
-            'job_type': j.jobType,
-            'apply_url': j.applyUrl,
-            'match_score': j.matchScore,
-            'required_skills': j.requiredSkills,
-          }).toList();
+          _recommendations = recsRes.data!
+              .map(
+                (j) => {
+                  'id': j.id,
+                  'title': j.title,
+                  'company_name': j.companyName,
+                  'location': j.location,
+                  'description': j.description,
+                  'job_type': j.jobType,
+                  'apply_url': j.applyUrl,
+                  'match_score': j.matchScore,
+                  'required_skills': j.requiredSkills,
+                },
+              )
+              .toList();
         });
       }
 
@@ -118,23 +115,28 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
 
       if (res.isSuccess && res.data != null) {
         setState(() {
-          _jobs = res.data!.map((j) => {
-            'id': j.id,
-            'title': j.title,
-            'company_name': j.companyName,
-            'location': j.location,
-            'description': j.description,
-            'job_type': j.jobType,
-            'apply_url': j.applyUrl,
-            'match_score': j.matchScore,
-            'required_skills': j.requiredSkills,
-          }).toList();
+          _jobs = res.data!
+              .map(
+                (j) => {
+                  'id': j.id,
+                  'title': j.title,
+                  'company_name': j.companyName,
+                  'location': j.location,
+                  'description': j.description,
+                  'job_type': j.jobType,
+                  'apply_url': j.applyUrl,
+                  'match_score': j.matchScore,
+                  'required_skills': j.requiredSkills,
+                },
+              )
+              .toList();
         });
       }
     } catch (e) {
       debugPrint("Job search error: $e");
       setState(() {
-        _errorMessage = "RapidAPI search limit reached or connection issue. Showing recommendations below.";
+        _errorMessage =
+            "RapidAPI search limit reached or connection issue. Showing recommendations below.";
       });
     } finally {
       if (mounted) {
@@ -160,7 +162,13 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
           }
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isSaved ? "Job removed from bookmarks." : "Job saved successfully!")),
+          SnackBar(
+            content: Text(
+              isSaved
+                  ? "Job removed from bookmarks."
+                  : "Job saved successfully!",
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -175,12 +183,24 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
 
   Future<void> _applyJob(dynamic job) async {
     final title = (job['title'] ?? 'Software Developer').toString();
-    final company = (job['company_name'] ?? job['company'] ?? '').toString().trim();
+    final company = (job['company_name'] ?? job['company'] ?? '')
+        .toString()
+        .trim();
     final location = (job['location'] ?? 'Remote').toString();
     final searchTerms = company.isNotEmpty ? '$company $title' : title;
-    final fallbackUrl = 'https://www.linkedin.com/jobs/search/?keywords=${Uri.encodeComponent(searchTerms)}&location=${Uri.encodeComponent(location)}';
-    final rawUrl = (job['apply_link'] ?? job['job_apply_link'] ?? job['apply_url'] ?? job['url'] ?? '').toString().trim();
-    final applyUrl = (rawUrl.isNotEmpty && rawUrl.startsWith('http')) ? rawUrl : fallbackUrl;
+    final fallbackUrl =
+        'https://www.linkedin.com/jobs/search/?keywords=${Uri.encodeComponent(searchTerms)}&location=${Uri.encodeComponent(location)}';
+    final rawUrl =
+        (job['apply_link'] ??
+                job['job_apply_link'] ??
+                job['apply_url'] ??
+                job['url'] ??
+                '')
+            .toString()
+            .trim();
+    final applyUrl = (rawUrl.isNotEmpty && rawUrl.startsWith('http'))
+        ? rawUrl
+        : fallbackUrl;
 
     try {
       final Uri url = Uri.parse(applyUrl);
@@ -258,10 +278,7 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                     const SizedBox(height: 4),
                     Text(
                       "$company • $location",
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: inkSoft,
-                      ),
+                      style: TextStyle(fontSize: 12, color: inkSoft),
                     ),
                   ],
                 ),
@@ -296,11 +313,7 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
           Text(
             job['description'] ??
                 'No job details summary available. Click Apply to see full posting details.',
-            style: TextStyle(
-              fontSize: 12,
-              color: inkSoft,
-              height: 1.4,
-            ),
+            style: TextStyle(fontSize: 12, color: inkSoft, height: 1.4),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
@@ -341,7 +354,11 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                 icon: const Icon(Icons.open_in_new_rounded, size: 14),
                 label: const Text(
                   "APPLY LINK",
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.4),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: cobalt,
@@ -373,9 +390,7 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
     return Scaffold(
       backgroundColor: paper,
       body: _isLoading && _jobs.isEmpty && _recommendations.isEmpty
-          ? Center(
-              child: CircularProgressIndicator(color: cobalt),
-            )
+          ? Center(child: CircularProgressIndicator(color: cobalt))
           : RefreshIndicator(
               onRefresh: _loadRecommendationsAndSaved,
               color: cobalt,
@@ -428,7 +443,9 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                             onPressed: _isLoading ? null : _searchJobs,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: cobalt,
-                              foregroundColor: isDark ? AppColors.darkPaper : Colors.white,
+                              foregroundColor: isDark
+                                  ? AppColors.darkPaper
+                                  : Colors.white,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(4),
@@ -439,7 +456,9 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                                     width: 18,
                                     height: 18,
                                     child: CircularProgressIndicator(
-                                      color: isDark ? AppColors.darkPaper : Colors.white,
+                                      color: isDark
+                                          ? AppColors.darkPaper
+                                          : Colors.white,
                                       strokeWidth: 2,
                                     ),
                                   )
@@ -459,44 +478,51 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: [
-                          "Remote",
-                          "Bengaluru",
-                          "Kochi",
-                          "Hyderabad",
-                          "Mumbai",
-                          "Chennai",
-                          "London",
-                          "USA"
-                        ].map((loc) {
-                          final isSelected = _locationController.text.trim().toLowerCase() == loc.toLowerCase();
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 8.0),
-                            child: ActionChip(
-                              label: Text(loc),
-                              backgroundColor: isSelected
-                                  ? cobalt.withValues(alpha: 0.12)
-                                  : paperAlt,
-                              labelStyle: TextStyle(
-                                fontSize: 11,
-                                color: isSelected ? cobalt : inkSoft,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
-                                side: BorderSide(
-                                  color: isSelected ? cobalt : rule,
+                        children:
+                            [
+                              "Remote",
+                              "Bengaluru",
+                              "Kochi",
+                              "Hyderabad",
+                              "Mumbai",
+                              "Chennai",
+                              "London",
+                              "USA",
+                            ].map((loc) {
+                              final isSelected =
+                                  _locationController.text
+                                      .trim()
+                                      .toLowerCase() ==
+                                  loc.toLowerCase();
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: ActionChip(
+                                  label: Text(loc),
+                                  backgroundColor: isSelected
+                                      ? cobalt.withValues(alpha: 0.12)
+                                      : paperAlt,
+                                  labelStyle: TextStyle(
+                                    fontSize: 11,
+                                    color: isSelected ? cobalt : inkSoft,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.normal,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                    side: BorderSide(
+                                      color: isSelected ? cobalt : rule,
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _locationController.text = loc;
+                                    });
+                                    _searchJobs();
+                                  },
                                 ),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _locationController.text = loc;
-                                });
-                                _searchJobs();
-                              },
-                            ),
-                          );
-                        }).toList(),
+                              );
+                            }).toList(),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -504,12 +530,9 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _experienceLevel,
+                            initialValue: _experienceLevel,
                             dropdownColor: paperAlt,
-                            style: TextStyle(
-                              color: ink,
-                              fontSize: 13,
-                            ),
+                            style: TextStyle(color: ink, fontSize: 13),
                             decoration: InputDecoration(
                               hintText: "Experience Level",
                               hintStyle: TextStyle(color: inkSoft),
@@ -556,12 +579,9 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: DropdownButtonFormField<String>(
-                            value: _experienceYears,
+                            initialValue: _experienceYears,
                             dropdownColor: paperAlt,
-                            style: TextStyle(
-                              color: ink,
-                              fontSize: 13,
-                            ),
+                            style: TextStyle(color: ink, fontSize: 13),
                             decoration: InputDecoration(
                               hintText: "Years",
                               hintStyle: TextStyle(color: inkSoft),
@@ -647,9 +667,7 @@ class _JobFinderScreenState extends State<JobFinderScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 40.0),
                           child: Center(
-                            child: CircularProgressIndicator(
-                              color: cobalt,
-                            ),
+                            child: CircularProgressIndicator(color: cobalt),
                           ),
                         )
                       else if (_jobs.isEmpty)

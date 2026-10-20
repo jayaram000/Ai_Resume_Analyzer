@@ -88,9 +88,23 @@ class CommonUtilsTests(SimpleTestCase):
         self.assertEqual(res["status"], "success")
 
         # 2. Key components parsing detection mock check
-        res_parse = call_gemini_api("Please extract information for resume schema: \"name\":")
-        self.assertIn("skills", res_parse)
-        self.assertTrue(len(res_parse["skills"]) > 0)
+        from unittest.mock import patch
+        with patch("common.gemini.requests.post") as mock_post:
+            mock_post.return_value.status_code = 200
+            mock_post.return_value.json.return_value = {
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [
+                                {"text": '{"name": "Test Candidate", "skills": ["Python", "Django", "Flutter"]}'}
+                            ]
+                        }
+                    }
+                ]
+            }
+            res_parse = call_gemini_api("Please extract information for resume schema: \"name\":")
+            self.assertIn("skills", res_parse)
+            self.assertTrue(len(res_parse["skills"]) > 0)
 
 
 from rest_framework.test import APITestCase

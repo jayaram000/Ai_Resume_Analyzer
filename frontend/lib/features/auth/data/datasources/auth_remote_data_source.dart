@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/core/storage/secure_storage.dart';
 import 'package:frontend/core/error/exceptions.dart';
@@ -27,6 +28,52 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   AuthRemoteDataSourceImpl({required this.apiClient, required this.storage});
 
+  String _extractErrorMessage(dynamic error, String fallback) {
+    if (error is DioException) {
+      if (error.response?.statusCode == 401) {
+        return "Invalid email or password. Please try again.";
+      }
+      final data = error.response?.data;
+      if (data is Map) {
+        if (data['detail'] != null) {
+          final detail = data['detail'].toString();
+          if (detail.toLowerCase().contains("no active account") ||
+              detail.toLowerCase().contains("credentials")) {
+            return "Invalid email or password. Please try again.";
+          }
+          return detail;
+        }
+        if (data['error'] != null) return data['error'].toString();
+        if (data['message'] != null) return data['message'].toString();
+        if (data['non_field_errors'] != null) {
+          final nfe = data['non_field_errors'];
+          if (nfe is List && nfe.isNotEmpty) return nfe.first.toString();
+          return nfe.toString();
+        }
+        for (final entry in data.entries) {
+          if (entry.value is List && (entry.value as List).isNotEmpty) {
+            return "${entry.key.toString().toUpperCase()}: ${(entry.value as List).first}";
+          } else if (entry.value is String) {
+            return "${entry.key}: ${entry.value}";
+          }
+        }
+      } else if (data is String && data.isNotEmpty && !data.contains('<!DOCTYPE')) {
+        return data;
+      }
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.connectionError) {
+        return "Cannot connect to server. Please check your internet connection.";
+      }
+    }
+    final str = error.toString();
+    if (str.contains("DioException") || str.contains("401") || str.contains("validateStatus")) {
+      return "Invalid email or password. Please try again.";
+    }
+    return fallback;
+  }
+
   @override
   Future<UserModel> login(String email, String password) async {
     try {
@@ -49,9 +96,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         return UserModel.fromJson(userData is Map<String, dynamic> ? userData : {'email': email});
       }
       throw ServerException("Login failed with status ${response.statusCode}");
+    } on Requires2FAException {
+      rethrow;
+    } on ServerException {
+      rethrow;
     } catch (e) {
-      if (e is ServerException) rethrow;
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e, "Invalid email or password. Please try again."));
     }
   }
 
@@ -77,7 +127,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw ServerException("Registration failed.");
     } catch (e) {
       if (e is ServerException) rethrow;
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e, "Registration failed. Please check your details and try again."));
     }
   }
 
@@ -92,7 +142,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw ServerException("Failed to fetch user profile.");
     } catch (e) {
       if (e is ServerException) rethrow;
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e, "Failed to fetch user profile."));
     }
   }
 
@@ -112,7 +162,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw ServerException("Failed to update profile.");
     } catch (e) {
       if (e is ServerException) rethrow;
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e, "Failed to update profile."));
     }
   }
 
@@ -121,7 +171,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       await apiClient.post('auth/password-reset/', data: {'email': email});
     } catch (e) {
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e, "Failed to send reset link."));
     }
   }
 
@@ -158,15 +208,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw ServerException("Google Sign-In failed");
     } catch (e) {
       if (e is Requires2FAException) rethrow;
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e, "Google Sign-In failed."));
     }
   }
 
   @override
   Future<void> totpSetup() async {
-     // TOTP Setup returns a secret and qr_code, which should be called by the UI directly or via a specific usecase
-     // We will implement this as returning the raw map for simplicity, or just throwing if error.
-     // Wait, the repository needs to return the QR code. I'll change the return type to Map<String, dynamic>.
+     // TOTP Setup returns a secret and qr_code
   }
   
   @override
@@ -184,7 +232,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
       throw ServerException("TOTP Verification failed");
     } catch (e) {
-      throw ServerException(e.toString());
+      throw ServerException(_extractErrorMessage(e, "Invalid verification code. Please try again."));
     }
   }
 }

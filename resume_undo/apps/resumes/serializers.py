@@ -62,6 +62,20 @@ class UploadResumeRequestSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=255, required=False, allow_blank=True)
     file = serializers.FileField(required=True)
 
+    def validate_file(self, value):
+        import os
+        max_size = 10 * 1024 * 1024  # 10 MB
+        if value.size > max_size:
+            raise serializers.ValidationError("File size must not exceed 10 MB.")
+
+        ext = os.path.splitext(value.name)[1].lower()
+        allowed_extensions = [".pdf", ".docx", ".doc", ".txt"]
+        if ext not in allowed_extensions:
+            raise serializers.ValidationError(
+                f"Unsupported file format '{ext}'. Allowed formats: {', '.join(allowed_extensions)}"
+            )
+        return value
+
 
 class UploadResumeResponseDataSerializer(serializers.Serializer):
     resume_id = serializers.UUIDField()
